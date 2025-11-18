@@ -1,0 +1,30 @@
+@startuml
+node "Пользовательский браузер"{
+  artifact "React Клиент"
+}
+
+
+node "Docker Host"{
+  node "Docker Compose"{
+      node "Frontend контейнер"{
+      artifact "Приложение React" <<frontend>>
+    }
+    node "Backend контейнер"{
+      artifact "ASP .NET Core API" <<backend>>
+      component "Контроллеры"
+      component "Сервисы"
+      component "Репозитории"
+      component "JWT Middleware"
+    }
+  
+  node "База данных Контейнер"{
+    artifact "MySQL" <<database>>
+  }
+}
+
+"Пользовательский браузер" --> "Frontend контейнер" : HTTP
+"Frontend контейнер" --> "Backend контейнер" : HTTPS / JSON + JWT
+"Backend контейнер" -->  "База данных Контейнер" : SQL / EF Core
+
+
+@enduml
