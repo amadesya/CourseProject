@@ -1,0 +1,5 @@
+{
+  "name": "SmartFix: Repair Request Management",
+  "description": "A web application for digital equipment repair organizations to manage and track service requests, designed to optimize interaction between employees and customers.",
+  "requestFramePermissions": []
+}

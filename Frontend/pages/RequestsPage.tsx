@@ -1,0 +1,464 @@
+import React, { useState, useEffect, useContext, useMemo } from 'react';
+import { api } from '../services/api';
+import { RepairRequest, RequestStatus, Role, User } from '../types';
+import { AuthContext } from '../App';
+import Modal from '../components/Modal';
+import StatusBadge from '../components/StatusBadge';
+
+const NewRequestForm: React.FC<{ user: User; onSubmitted: () => void }> = ({ user, onSubmitted }) => {
+    const [deviceType, setDeviceType] = useState('');
+    const [brand, setBrand] = useState('');
+    const [model, setModel] = useState('');
+    const [issueDescription, setIssueDescription] = useState('');
+    const [urgency, setUrgency] = useState('standard');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!deviceType || !brand || !model || !issueDescription) {
+            alert('Пожалуйста, заполните все поля информации об устройстве и опишите проблему.');
+            return;
+        }
+        setIsSubmitting(true);
+        const newRequestData = {
+            clientName: user.name,
+            clientId: user.id,
+            device: `${deviceType} ${brand} ${model}`,
+            issueDescription: `Срочность: ${urgency === 'urgent' ? 'Срочно' : 'Стандартная'}. Проблема: ${issueDescription}`,
+        };
+
+        try {
+            await api.createRequest(newRequestData, user);
+            onSubmitted(); // This will refetch data and switch tabs
+        } catch (error) {
+            console.error("Failed to create request:", error);
+            alert('Не удалось создать заявку. Попробуйте снова.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="bg-smartfix-darker p-6 rounded-2xl border border-smartfix-dark max-w-3xl mx-auto">
+            <div className="space-y-8">
+                <fieldset className="p-4 border border-smartfix-dark rounded-lg">
+                    <legend className="px-2 font-semibold text-smartfix-lightest">Информация об устройстве</legend>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                        <div>
+                            <label className="block text-smartfix-light mb-1 text-sm">Тип устройства</label>
+                            <input type="text" value={deviceType} onChange={e => setDeviceType(e.target.value)} placeholder="Телефон" className="w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light" />
+                        </div>
+                        <div>
+                            <label className="block text-smartfix-light mb-1 text-sm">Бренд</label>
+                            <input type="text" value={brand} onChange={e => setBrand(e.target.value)} placeholder="Apple" className="w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light" />
+                        </div>
+                        <div>
+                            <label className="block text-smartfix-light mb-1 text-sm">Модель</label>
+                            <input type="text" value={model} onChange={e => setModel(e.target.value)} placeholder="iPhone 14 Pro" className="w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light" />
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset className="p-4 border border-smartfix-dark rounded-lg">
+                     <legend className="px-2 font-semibold text-smartfix-lightest">Описание проблемы</legend>
+                    <textarea value={issueDescription} onChange={e => setIssueDescription(e.target.value)} placeholder="Например: разбит экран, не включается..." rows={4} className="mt-2 w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light"></textarea>
+                </fieldset>
+
+                <fieldset className="p-4 border border-smartfix-dark rounded-lg">
+                    <legend className="px-2 font-semibold text-smartfix-lightest">Срочность</legend>
+                     <select value={urgency} onChange={e => setUrgency(e.target.value)} className="mt-2 w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light">
+                        <option value="standard">Стандартная</option>
+                        <option value="urgent">Срочный ремонт</option>
+                    </select>
+                </fieldset>
+
+                <div className="flex justify-end">
+                    <button type="submit" disabled={isSubmitting} className="bg-smartfix-light text-smartfix-darkest font-bold py-3 px-8 rounded-lg hover:bg-opacity-80 transition-colors disabled:bg-smartfix-medium">
+                        {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
+                    </button>
+                </div>
+            </div>
+        </form>
+    );
+};
+
+const RequestsPage: React.FC = () => {
+    const { user } = useContext(AuthContext);
+    const [requests, setRequests] = useState<RepairRequest[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedRequest, setSelectedRequest] = useState<RepairRequest | null>(null);
+    const [filterStatus, setFilterStatus] = useState<string>('all');
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
+    
+    // Client view state
+    const [activeClientTab, setActiveClientTab] = useState<'list' | 'new'>('list');
+    
+    // Technician view state
+    const [activeTechTab, setActiveTechTab] = useState<'accepted' | 'new'>('accepted');
+
+    // State for request details modal
+    const [technicians, setTechnicians] = useState<User[]>([]);
+    const [selectedTechnician, setSelectedTechnician] = useState<string>('');
+    const [newStatus, setNewStatus] = useState<RequestStatus | ''>('');
+    const [newComment, setNewComment] = useState('');
+
+
+    const fetchData = async () => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const data = await api.getRequests(user);
+            setRequests(data);
+            if (user.role === Role.Admin) {
+                const techs = await api.getTechnicians();
+                setTechnicians(techs);
+            }
+        } catch (error) {
+            console.error("Failed to fetch requests:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user]);
+
+    const filteredRequests = useMemo(() => {
+        let displayData = requests;
+
+        if (user?.role === Role.Technician) {
+            if (activeTechTab === 'accepted') {
+                displayData = requests.filter(r => r.technicianId === user.id);
+            } else { // 'new' tab
+                displayData = requests.filter(r => r.status === RequestStatus.New && !r.technicianId);
+            }
+        }
+        
+        return displayData.filter(r => {
+            const statusMatch = filterStatus === 'all' || r.status === filterStatus;
+            const requestDate = new Date(r.createdAt);
+            const startDateMatch = !startDate || requestDate >= new Date(startDate);
+            const endDateMatch = !endDate || requestDate <= new Date(endDate);
+            return statusMatch && startDateMatch && endDateMatch;
+        });
+    }, [requests, filterStatus, startDate, endDate, user, activeTechTab]);
+    
+    const handleUpdateRequest = async () => {
+        if (!selectedRequest || !user) return;
+    
+        const updatedRequest = { ...selectedRequest };
+        let hasChanges = false;
+    
+        if (newStatus && newStatus !== selectedRequest.status) {
+            updatedRequest.status = newStatus;
+            hasChanges = true;
+        }
+    
+        if (user.role === Role.Admin && selectedTechnician && Number(selectedTechnician) !== selectedRequest.technicianId) {
+            const tech = technicians.find(t => t.id === Number(selectedTechnician));
+            updatedRequest.technicianId = tech?.id;
+            updatedRequest.technicianName = tech?.name;
+            hasChanges = true;
+        }
+
+        if (newComment.trim()) {
+            updatedRequest.comments = [...updatedRequest.comments, {
+                author: user.name,
+                text: newComment.trim(),
+                date: new Date().toLocaleString('ru-RU')
+            }];
+            hasChanges = true;
+        }
+    
+        if (hasChanges) {
+            try {
+                await api.updateRequest(updatedRequest);
+                await fetchData();
+                closeDetailsModal();
+            } catch (error) {
+                console.error("Failed to update request:", error);
+            }
+        } else {
+             closeDetailsModal();
+        }
+    };
+
+    const handleTechnicianAction = async (action: 'accept' | 'reject') => {
+        if (!selectedRequest || !user || user.role !== Role.Technician) return;
+        
+        const updatedRequest: RepairRequest = { ...selectedRequest };
+        
+        if (action === 'accept') {
+            updatedRequest.technicianId = user.id;
+            updatedRequest.technicianName = user.name;
+            updatedRequest.status = RequestStatus.InProgress;
+            updatedRequest.comments.push({ author: 'Система', text: `Мастер ${user.name} принял заявку в работу.`, date: new Date().toLocaleString('ru-RU') });
+        } else { // reject
+            updatedRequest.status = RequestStatus.Rejected;
+            updatedRequest.comments.push({ author: 'Система', text: `Мастер ${user.name} отклонил заявку.`, date: new Date().toLocaleString('ru-RU') });
+        }
+
+        try {
+            await api.updateRequest(updatedRequest);
+            await fetchData();
+            closeDetailsModal();
+            if (action === 'accept') {
+                setActiveTechTab('accepted');
+            }
+        } catch (error) {
+            console.error(`Failed to ${action} request:`, error);
+        }
+    };
+    
+    const openDetailsModal = (request: RepairRequest) => {
+        setSelectedRequest(request);
+        setNewStatus(request.status);
+        setSelectedTechnician(request.technicianId?.toString() || '');
+    };
+    
+    const closeDetailsModal = () => {
+        setSelectedRequest(null);
+        setNewComment('');
+    }
+    
+    const onNewRequestSubmitted = () => {
+        fetchData();
+        setActiveClientTab('list');
+    }
+
+    if (!user) return null;
+    
+    const isClient = user.role === Role.Client;
+    const isTechnician = user.role === Role.Technician;
+
+    const renderTechnicianActionModal = () => {
+        if (!selectedRequest) return null;
+        return (
+             <Modal isOpen={!!selectedRequest} onClose={closeDetailsModal} title={`Новая заявка #${selectedRequest.id}`}>
+                 <div className="space-y-6">
+                    <div>
+                         <h4 className="font-bold text-lg text-smartfix-lightest mb-2">Информация о заявке</h4>
+                         <div className="grid grid-cols-2 gap-4 text-smartfix-light p-4 bg-smartfix-dark rounded-lg">
+                             <p><strong>Клиент:</strong><br/>{selectedRequest.clientName}</p>
+                            <p><strong>Устройство:</strong><br/>{selectedRequest.device}</p>
+                            <p className="col-span-2"><strong>Описание проблемы:</strong><br/>{selectedRequest.issueDescription}</p>
+                        </div>
+                    </div>
+                    <div className="flex justify-end pt-4 gap-4">
+                        <button onClick={() => handleTechnicianAction('reject')} className="bg-red-600/80 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 transition-colors">
+                            Отклонить
+                        </button>
+                        <button onClick={() => handleTechnicianAction('accept')} className="bg-green-600/80 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 transition-colors">
+                            Принять в работу
+                        </button>
+                    </div>
+                 </div>
+             </Modal>
+        )
+    }
+
+    const renderDetailsModal = () => {
+        if (!selectedRequest) return null;
+
+        // Technician viewing a new, unassigned request
+        if (isTechnician && activeTechTab === 'new' && !selectedRequest.technicianId) {
+            return renderTechnicianActionModal();
+        }
+        
+        return (
+             <Modal isOpen={!!selectedRequest} onClose={closeDetailsModal} title={`Заявка #${selectedRequest.id} - ${selectedRequest.device}`}>
+                 <div className="space-y-6">
+                    {/* Request info */}
+                    <div>
+                         <h4 className="font-bold text-lg text-smartfix-lightest mb-2">Информация о заявке</h4>
+                         <div className="grid grid-cols-2 gap-4 text-smartfix-light p-4 bg-smartfix-dark rounded-lg">
+                             <p><strong>Клиент:</strong><br/>{selectedRequest.clientName}</p>
+                            <p><strong>Устройство:</strong><br/>{selectedRequest.device}</p>
+                            <p><strong>Мастер:</strong><br/>{selectedRequest.technicianName || 'Не назначен'}</p>
+                            <p><strong>Статус:</strong><br/><StatusBadge status={selectedRequest.status} /></p>
+                            <p className="col-span-2"><strong>Описание проблемы:</strong><br/>{selectedRequest.issueDescription}</p>
+                        </div>
+                    </div>
+
+                    {/* Comments */}
+                    <div>
+                         <h4 className="font-bold text-lg text-smartfix-lightest mb-2">Комментарии</h4>
+                         <div className="space-y-3 max-h-48 overflow-y-auto bg-smartfix-dark p-4 rounded-lg">
+                            {selectedRequest.comments.length > 0 ? selectedRequest.comments.map((c, i) => (
+                                <div key={i} className="p-3 bg-smartfix-darker rounded-md">
+                                    <p className="text-sm text-smartfix-light"><span className="font-bold text-smartfix-lightest">{c.author}</span> - {c.date}</p>
+                                    <p className="mt-1 text-smartfix-lightest">{c.text}</p>
+                                </div>
+                            )) : <p className="text-smartfix-light">Комментариев пока нет.</p>}
+                        </div>
+                    </div>
+                    
+                    {/* Actions */}
+                    {(user.role === Role.Admin || user.role === Role.Technician) && (
+                        <div>
+                            <h4 className="font-bold text-lg text-smartfix-lightest mb-2">Изменить заявку</h4>
+                            <div className="space-y-4 p-4 bg-smartfix-dark rounded-lg">
+                                 {user.role === Role.Admin && (
+                                    <div>
+                                        <label className="block text-smartfix-light mb-1">Назначить мастера</label>
+                                        <select value={selectedTechnician} onChange={e => setSelectedTechnician(e.target.value)} className="w-full bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium">
+                                            <option value="">Не назначен</option>
+                                            {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                        </select>
+                                    </div>
+                                )}
+                                <div>
+                                     <label className="block text-smartfix-light mb-1">Изменить статус</label>
+                                     <select value={newStatus} onChange={e => setNewStatus(e.target.value as RequestStatus)} className="w-full bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium">
+                                        {Object.values(RequestStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                                     </select>
+                                </div>
+                                <div>
+                                    <label className="block text-smartfix-light mb-1">Добавить комментарий</label>
+                                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} rows={3} className="w-full bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end pt-4 gap-4">
+                        <button onClick={closeDetailsModal} className="bg-smartfix-medium text-smartfix-lightest font-bold py-2 px-6 rounded-lg hover:bg-opacity-80 transition-colors">
+                            Закрыть
+                        </button>
+                        {(user.role === Role.Admin || user.role === Role.Technician) && (
+                            <button onClick={handleUpdateRequest} className="bg-smartfix-light text-smartfix-darkest font-bold py-2 px-6 rounded-lg hover:bg-opacity-80 transition-colors">
+                                Сохранить
+                            </button>
+                        )}
+                    </div>
+                 </div>
+             </Modal>
+        )
+    }
+
+    const renderContent = () => {
+        if (isClient) {
+            if (activeClientTab === 'new') {
+                return <NewRequestForm user={user} onSubmitted={onNewRequestSubmitted} />;
+            }
+            // Fallthrough to render list for client
+        }
+        
+        // Render request list for everyone else, or for clients on 'list' tab
+        return (
+            <>
+                {isTechnician && (
+                     <div className="flex border-b border-smartfix-dark mb-6">
+                        <button onClick={() => setActiveTechTab('accepted')} className={`px-6 py-3 text-lg font-semibold transition-colors ${activeTechTab === 'accepted' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}>
+                            Принятые
+                        </button>
+                        <button onClick={() => setActiveTechTab('new')} className={`px-6 py-3 text-lg font-semibold transition-colors ${activeTechTab === 'new' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}>
+                            Новые
+                        </button>
+                    </div>
+                )}
+            
+                {!isClient && (
+                     <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-smartfix-dark rounded-lg border border-smartfix-medium">
+                        <div>
+                            <label htmlFor="status-filter" className="text-sm font-medium text-smartfix-light mr-2">Статус:</label>
+                            <select id="status-filter" onChange={(e) => setFilterStatus(e.target.value)} value={filterStatus} className="bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light">
+                                <option value="all">Все статусы</option>
+                                {Object.values(RequestStatus).map(status => (
+                                    <option key={status} value={status}>{status}</option>
+                                ))}
+                            </select>
+                        </div>
+                         <div className="flex items-center gap-2">
+                            <label htmlFor="start-date" className="text-sm font-medium text-smartfix-light">С:</label>
+                            <input
+                                type="date"
+                                id="start-date"
+                                value={startDate}
+                                onChange={e => setStartDate(e.target.value)}
+                                className="bg-smartfix-darker p-1.5 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-sm"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="end-date" className="text-sm font-medium text-smartfix-light">По:</label>
+                            <input
+                                type="date"
+                                id="end-date"
+                                value={endDate}
+                                onChange={e => setEndDate(e.target.value)}
+                                className="bg-smartfix-darker p-1.5 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-sm"
+                            />
+                        </div>
+                        <button
+                            onClick={() => { setStartDate(''); setEndDate(''); setFilterStatus('all'); }}
+                            className="text-sm bg-smartfix-medium text-white px-4 py-2 rounded-lg hover:bg-opacity-80 transition-colors"
+                        >
+                            Сбросить фильтры
+                        </button>
+                    </div>
+                )}
+
+                {isLoading ? (
+                    <div className="text-center text-smartfix-light">Загрузка заявок...</div>
+                ) : (
+                    <div className="bg-smartfix-darker rounded-2xl shadow-xl border border-smartfix-dark">
+                        <div className="divide-y divide-smartfix-dark">
+                        {filteredRequests.length > 0 ? filteredRequests.map(req => (
+                            <div key={req.id} className="p-4 hover:bg-smartfix-dark transition-colors duration-200">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
+                                    <div>
+                                        <div className="font-bold text-lg text-smartfix-lightest">Заявка #{req.id}</div>
+                                         <div className="text-sm text-smartfix-light">{new Date(req.createdAt).toLocaleDateString('ru-RU')}</div>
+                                    </div>
+                                    <div className="col-span-2 md:col-span-1">
+                                        <div className="font-semibold text-smartfix-lightest">{req.device}</div>
+                                        <p className="text-sm text-smartfix-light truncate">{req.issueDescription}</p>
+                                    </div>
+                                    <div className="text-center">
+                                        <StatusBadge status={req.status} />
+                                    </div>
+                                    <div className="text-right col-span-2 md:col-span-1">
+                                        <button onClick={() => openDetailsModal(req)} className="bg-smartfix-medium text-smartfix-lightest py-2 px-4 rounded-lg hover:bg-smartfix-light hover:text-smartfix-darkest transition-colors text-sm font-semibold">
+                                            Подробнее
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )) : (
+                            <p className="p-6 text-center text-smartfix-light">Заявок не найдено.</p>
+                        )}
+                        </div>
+                    </div>
+                )}
+            </>
+        )
+    }
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-4xl font-bold text-smartfix-lightest">{isClient ? 'Личный кабинет' : 'Заявки на ремонт'}</h2>
+            </div>
+            
+            {isClient && (
+                 <div className="flex border-b border-smartfix-dark mb-6">
+                    <button onClick={() => setActiveClientTab('list')} className={`px-6 py-3 text-lg font-semibold transition-colors ${activeClientTab === 'list' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}>
+                        Список заявок
+                    </button>
+                    <button onClick={() => setActiveClientTab('new')} className={`px-6 py-3 text-lg font-semibold transition-colors ${activeClientTab === 'new' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}>
+                        Новая заявка
+                    </button>
+                </div>
+            )}
+            
+            {renderContent()}
+
+            {renderDetailsModal()}
+        </div>
+    );
+};
+
+export default RequestsPage;
