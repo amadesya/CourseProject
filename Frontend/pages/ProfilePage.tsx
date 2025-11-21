@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { AuthContext } from '../App';
+import { AuthContext } from '../AuthContext';
 import { UserIcon } from '../components/icons';
 
 const ProfilePage: React.FC = () => {
@@ -53,7 +53,7 @@ const ProfilePage: React.FC = () => {
             setError(err.message || 'Произошла ошибка.');
         } finally {
             setIsSaving(false);
-            setTimeout(() => setSuccess(''), 3000); // Clear success message after 3 seconds
+            setTimeout(() => setSuccess(''), 3000);
         }
     };
 

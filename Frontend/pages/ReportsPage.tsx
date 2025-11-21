@@ -1,24 +1,25 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { api } from '../services/api';
+import {getAllRepairRequests} from '../services/api';
 import { RepairRequest, RequestStatus, Role } from '../types';
-import { AuthContext } from '../App';
+import { AuthContext } from '../AuthContext';
 
 const ReportsPage: React.FC = () => {
     const { user } = useContext(AuthContext);
     const [requests, setRequests] = useState<RepairRequest[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-
     useEffect(() => {
         const fetchAllRequests = async () => {
             if (!user) return;
+
             setIsLoading(true);
+
             try {
-                // In a real app, an admin might get all requests, a tech only their own.
-                // We'll simulate getting all requests for reporting purposes.
-                const allRequests = await api.getRequests({ ...user, role: Role.Admin }); // Override to get all
+                // Получаем все заявки с бэкенда
+                const allRequests = await getAllRepairRequests();
                 setRequests(allRequests);
             } catch (error) {
                 console.error("Failed to fetch requests for report:", error);
+                alert("Не удалось загрузить заявки для отчета. Попробуйте позже.");
             } finally {
                 setIsLoading(false);
             }
@@ -30,7 +31,7 @@ const ReportsPage: React.FC = () => {
     const handlePrint = () => {
         window.print();
     };
-    
+
     const summary = requests.reduce((acc, req) => {
         acc[req.status] = (acc[req.status] || 0) + 1;
         return acc;
@@ -47,8 +48,8 @@ const ReportsPage: React.FC = () => {
                     Печать / Сохранить в PDF
                 </button>
             </div>
-            
-             <div id="report-content" className="bg-smartfix-darker p-8 rounded-2xl print:bg-white print:text-black print:shadow-none print:p-0">
+
+            <div id="report-content" className="bg-smartfix-darker p-8 rounded-2xl print:bg-white print:text-black print:shadow-none print:p-0">
                 <h3 className="text-3xl font-bold mb-2 print:text-black">Сводный отчёт по заявкам</h3>
                 <p className="text-smartfix-light mb-8 print:text-gray-600">Дата формирования: {new Date().toLocaleDateString('ru-RU')}</p>
 
@@ -61,16 +62,16 @@ const ReportsPage: React.FC = () => {
                                 <p className="text-3xl font-bold text-white print:text-black">{summary[status] || 0}</p>
                             </div>
                         ))}
-                         <div className="bg-smartfix-medium p-4 rounded-md print:bg-blue-200">
-                                <p className="text-lg text-smartfix-lightest font-semibold print:text-blue-800">Всего заявок</p>
-                                <p className="text-3xl font-bold text-white print:text-blue-900">{requests.length}</p>
-                            </div>
+                        <div className="bg-smartfix-medium p-4 rounded-md print:bg-blue-200">
+                            <p className="text-lg text-smartfix-lightest font-semibold print:text-blue-800">Всего заявок</p>
+                            <p className="text-3xl font-bold text-white print:text-blue-900">{requests.length}</p>
+                        </div>
                     </div>
                 </div>
 
-                 <div>
+                <div>
                     <h4 className="text-2xl font-semibold mb-4 print:text-black">Все заявки</h4>
-                     <div className="overflow-x-auto border border-smartfix-medium rounded-lg">
+                    <div className="overflow-x-auto border border-smartfix-medium rounded-lg">
                         <table className="w-full text-left table-auto">
                             <thead className="bg-smartfix-dark text-smartfix-light print:bg-gray-200">
                                 <tr>
@@ -98,9 +99,9 @@ const ReportsPage: React.FC = () => {
                     </div>
                 </div>
             </div>
-            
+
             <style>
-            {`
+                {`
               @media print {
                 body {
                   background-color: white;

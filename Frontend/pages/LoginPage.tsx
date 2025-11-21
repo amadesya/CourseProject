@@ -1,24 +1,23 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { AuthContext } from '../App';
+import { AuthContext } from '../AuthContext';
 import { WrenchScrewdriverIcon, DocumentTextIcon, MagnifyingGlassIcon, ChartPieIcon, SparklesIcon } from '../components/icons';
 import Modal from '../components/Modal';
 import { Service } from '../types';
-import { api } from '../services/api';
+import { getServices } from '../services/api';
 
 type RegistrationStep = 'form' | 'pending_verification' | 'verified';
 
 const LoginPage: React.FC = () => {
     const { login, register } = useContext(AuthContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    
+
     const [isLoginView, setIsLoginView] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    
-    // State for registration flow
+
     const [registrationStep, setRegistrationStep] = useState<RegistrationStep>('form');
     const [verificationMessage, setVerificationMessage] = useState('');
 
@@ -28,18 +27,21 @@ const LoginPage: React.FC = () => {
     useEffect(() => {
         const fetchServices = async () => {
             setIsLoadingServices(true);
+
             try {
-                const data = await api.getServices();
+                const data = await getServices();
                 setServices(data);
             } catch (error) {
                 console.error("Failed to fetch services:", error);
+                alert("Не удалось загрузить список услуг. Попробуйте позже.");
             } finally {
                 setIsLoadingServices(false);
             }
         };
+
         fetchServices();
     }, []);
-    
+
     const resetFormState = () => {
         setError('');
         setName('');
@@ -48,13 +50,13 @@ const LoginPage: React.FC = () => {
         setRegistrationStep('form');
         setVerificationMessage('');
     }
-    
+
     const openLoginModal = () => {
         resetFormState();
         setIsLoginView(true);
         setIsModalOpen(true);
     }
-    
+
     const closeModal = () => {
         setIsModalOpen(false);
     }
@@ -62,14 +64,19 @@ const LoginPage: React.FC = () => {
     const handleVerify = async () => {
         setIsLoading(true);
         setError('');
+
         try {
-            const success = await api.verifyEmail(email);
+            // Здесь можно симулировать успешную верификацию
+            const success = true;
+
             if (success) {
                 setRegistrationStep('verified');
                 setVerificationMessage('Аккаунт успешно подтвержден! Теперь вы можете войти.');
+
+
                 setTimeout(() => {
                     setIsLoginView(true);
-                    setRegistrationStep('form'); // Reset for next time
+                    setRegistrationStep('form');
                 }, 3000);
             } else {
                 setError('Не удалось подтвердить email. Попробуйте снова.');
@@ -95,7 +102,6 @@ const LoginPage: React.FC = () => {
                 if (!user) {
                     setError('Пользователь с таким email уже существует.');
                 } else {
-                    // Don't close modal, show verification step
                     setRegistrationStep('pending_verification');
                 }
             }
@@ -110,8 +116,6 @@ const LoginPage: React.FC = () => {
         setError('');
         setIsLoading(true);
         try {
-            // In a real app, you'd use a more secure method than hardcoding a password.
-            // For this mock API, we assume a common password for test users.
             await login(userEmail, 'password');
             closeModal();
         } catch (err: any) {
@@ -131,10 +135,10 @@ const LoginPage: React.FC = () => {
             <p className="text-smartfix-light">{description}</p>
         </div>
     );
-    
+
     const renderAuthContent = () => {
         if (!isLoginView) { // Registration View
-             switch (registrationStep) {
+            switch (registrationStep) {
                 case 'pending_verification':
                     return (
                         <div className="text-center p-4">
@@ -148,21 +152,21 @@ const LoginPage: React.FC = () => {
                             >
                                 {isLoading ? 'Подтверждение...' : 'Подтвердить аккаунт'}
                             </button>
-                             {error && <p className="text-red-400 mt-4">{error}</p>}
+                            {error && <p className="text-red-400 mt-4">{error}</p>}
                         </div>
                     );
                 case 'verified':
-                     return (
+                    return (
                         <div className="text-center p-4">
-                             <h3 className="text-2xl font-bold text-green-400 mb-3">Email подтвержден!</h3>
-                             <p className="text-smartfix-light">{verificationMessage}</p>
+                            <h3 className="text-2xl font-bold text-green-400 mb-3">Email подтвержден!</h3>
+                            <p className="text-smartfix-light">{verificationMessage}</p>
                         </div>
-                     );
+                    );
                 case 'form':
                 default:
                     return (
                         <form onSubmit={handleSubmit} className="space-y-4">
-                             <div>
+                            <div>
                                 <label className="block text-smartfix-light mb-1">Имя</label>
                                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full bg-smartfix-dark p-3 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light" />
                             </div>
@@ -248,31 +252,31 @@ const LoginPage: React.FC = () => {
             </header>
 
             <main className="flex-grow flex flex-col items-center justify-center text-center px-4 pt-24">
-                 <h1 className="text-5xl md:text-7xl font-black text-smartfix-lightest mb-4">Ваша техника в надежных руках</h1>
+                <h1 className="text-5xl md:text-7xl font-black text-smartfix-lightest mb-4">Ваша техника в надежных руках</h1>
                 <p className="text-lg md:text-xl text-smartfix-light max-w-3xl mb-8">
                     Оптимизируйте процесс ремонта с нашей системой. Отслеживайте заявки, взаимодействуйте с мастерами и получайте уведомления в реальном времени.
                 </p>
-                 <button onClick={openLoginModal} className="bg-smartfix-lightest text-smartfix-darkest font-bold py-4 px-10 rounded-lg text-lg hover:scale-105 transition-transform">
+                <button onClick={openLoginModal} className="bg-smartfix-lightest text-smartfix-darkest font-bold py-4 px-10 rounded-lg text-lg hover:scale-105 transition-transform">
                     Создать заявку
                 </button>
             </main>
 
             <section className="py-20 px-4">
                 <div className="max-w-6xl mx-auto">
-                     <h2 className="text-4xl font-bold text-center text-smartfix-lightest mb-12">Как это работает?</h2>
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        <HowItWorksCard icon={<DocumentTextIcon className="w-8 h-8 text-smartfix-lightest"/>} title="1. Создайте заявку" description="Заполните простую форму, описав проблему с вашим устройством." />
-                        <HowItWorksCard icon={<MagnifyingGlassIcon className="w-8 h-8 text-smartfix-lightest"/>} title="2. Диагностика" description="Наш мастер проведет диагностику и определит причину неисправности." />
-                        <HowItWorksCard icon={<ChartPieIcon className="w-8 h-8 text-smartfix-lightest"/>} title="3. Отслеживание" description="Следите за статусом ремонта в вашем личном кабинете в реальном времени." />
-                        <HowItWorksCard icon={<SparklesIcon className="w-8 h-8 text-smartfix-lightest"/>} title="4. Готово!" description="Получите уведомление о готовности и заберите ваше исправное устройство." />
-                     </div>
+                    <h2 className="text-4xl font-bold text-center text-smartfix-lightest mb-12">Как это работает?</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <HowItWorksCard icon={<DocumentTextIcon className="w-8 h-8 text-smartfix-lightest" />} title="1. Создайте заявку" description="Заполните простую форму, описав проблему с вашим устройством." />
+                        <HowItWorksCard icon={<MagnifyingGlassIcon className="w-8 h-8 text-smartfix-lightest" />} title="2. Диагностика" description="Наш мастер проведет диагностику и определит причину неисправности." />
+                        <HowItWorksCard icon={<ChartPieIcon className="w-8 h-8 text-smartfix-lightest" />} title="3. Отслеживание" description="Следите за статусом ремонта в вашем личном кабинете в реальном времени." />
+                        <HowItWorksCard icon={<SparklesIcon className="w-8 h-8 text-smartfix-lightest" />} title="4. Готово!" description="Получите уведомление о готовности и заберите ваше исправное устройство." />
+                    </div>
                 </div>
             </section>
-            
+
             <section className="py-20 px-4 bg-smartfix-darker">
-                 <div className="max-w-4xl mx-auto">
-                     <h2 className="text-4xl font-bold text-center text-smartfix-lightest mb-12">Наши услуги</h2>
-                     {isLoadingServices ? <p className="text-center text-smartfix-light">Загрузка услуг...</p> : (
+                <div className="max-w-4xl mx-auto">
+                    <h2 className="text-4xl font-bold text-center text-smartfix-lightest mb-12">Наши услуги</h2>
+                    {isLoadingServices ? <p className="text-center text-smartfix-light">Загрузка услуг...</p> : (
                         <div className="bg-smartfix-dark rounded-xl border border-smartfix-medium shadow-lg">
                             {services.map((service, index) => (
                                 <div key={service.id} className={`p-6 flex justify-between items-center ${index < services.length - 1 ? 'border-b border-smartfix-medium' : ''}`}>
@@ -284,13 +288,9 @@ const LoginPage: React.FC = () => {
                                 </div>
                             ))}
                         </div>
-                     )}
-                 </div>
+                    )}
+                </div>
             </section>
-
-             <footer className="my-heading py-6 text-center text-smartfix-lightest border-t border-smartfix-dark mt-auto">
-                © 2025 СмартФикс. Все права защищены.
-            </footer>
 
             <Modal isOpen={isModalOpen} onClose={closeModal} title="Вход в личный кабинет">
                 <div className="mb-6 border-b border-smartfix-dark flex">

@@ -21,6 +21,7 @@ export interface User {
   isVerified: boolean;
   phone?: string;
   avatar?: string;
+  token?: string;
 }
 
 export interface Service {
@@ -42,3 +43,4 @@ export interface RepairRequest {
   comments: { author: string; text: string; date: string }[];
   createdAt: string;
 }
+

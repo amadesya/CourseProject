@@ -1,30 +1,15 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Role, User } from './types';
-import { mockUsers, api } from './services/api';
+import { User } from './types';
+import { login, register } from './services/api';
 import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/LoginPage';
-
-export const AuthContext = React.createContext<{
-    user: User | null;
-    login: (email: string, pass: string) => Promise<User | null>;
-    logout: () => void;
-    register: (name: string, email: string, pass: string) => Promise<User | null>;
-    updateUser: (user: User) => Promise<User | null>;
-}>({
-    user: null,
-    login: async () => null,
-    logout: () => {},
-    register: async () => null,
-    updateUser: async () => null,
-});
-
+import { AuthContext } from './AuthContext';
 
 const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Simulate checking for a logged-in user session
         const storedUser = localStorage.getItem('smartfix_user');
         if (storedUser) {
             setUser(JSON.parse(storedUser));
@@ -32,43 +17,54 @@ const App: React.FC = () => {
         setIsLoading(false);
     }, []);
 
-    const login = useCallback(async (email: string, pass: string) => {
-        const loggedInUser = await api.login(email, pass);
-        if (loggedInUser) {
-            setUser(loggedInUser);
-            localStorage.setItem('smartfix_user', JSON.stringify(loggedInUser));
+    const loginUser = useCallback(async (email: string, password: string) => {
+        try {
+            const authResponse = await login(email, password);
+            if (authResponse) {
+                const loggedInUser: User = {
+                    id: authResponse.id,
+                    name: authResponse.name,
+                    email: authResponse.email,
+                    role: authResponse.role,
+                    isVerified: authResponse.isVerified,
+                    phone: authResponse.phone,
+                    avatar: authResponse.avatar,
+                    token: authResponse.token, 
+                };
+                setUser(loggedInUser);
+                localStorage.setItem('smartfix_user', JSON.stringify(loggedInUser));
+                localStorage.setItem('token', authResponse.token); 
+                return loggedInUser;
+            }
+            return null;
+        } catch (error) {
+            console.error("Login error:", error);
+            return null;
         }
-        return loggedInUser;
     }, []);
 
-    const logout = useCallback(() => {
+    const logoutUser = useCallback(() => {
         setUser(null);
         localStorage.removeItem('smartfix_user');
+        localStorage.removeItem('token');
     }, []);
 
-    const register = useCallback(async (name: string, email: string, pass: string) => {
-        const newUser = await api.register(name, email, pass);
-        // User is not logged in automatically anymore. They must verify their email first.
-        return newUser;
-    }, []);
-
-    const updateUser = useCallback(async (updatedUserData: User) => {
-        const updatedUser = await api.updateUser(updatedUserData);
-        if(updatedUser) {
-            setUser(updatedUser);
-            localStorage.setItem('smartfix_user', JSON.stringify(updatedUser));
+    const registerUserFn = useCallback(async (name: string, email: string, password: string, phone?: string) => {
+        try {
+            const newUser = await register(name, email, password, phone);
+            return newUser;
+        } catch (error) {
+            console.error("Register error:", error);
+            return null;
         }
-        return updatedUser;
     }, []);
-    
 
     const authContextValue = useMemo(() => ({
         user,
-        login,
-        logout,
-        register,
-        updateUser,
-    }), [user, login, logout, register, updateUser]);
+        login: loginUser,
+        logout: logoutUser,
+        register: registerUserFn,
+    }), [user, loginUser, logoutUser, registerUserFn]);
 
     if (isLoading) {
         return (
@@ -77,7 +73,7 @@ const App: React.FC = () => {
             </div>
         );
     }
-    
+
     return (
         <AuthContext.Provider value={authContextValue}>
             <div className="min-h-screen bg-smartfix-darkest text-smartfix-lightest">

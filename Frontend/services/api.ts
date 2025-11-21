@@ -1,72 +1,148 @@
-// src/api/realApi.ts — НАСТОЯЩИЙ API ДЛЯ РАБОТЫ С БЭКЕНДОМ
-import { Role, User, Service, RepairRequest, RequestStatus } from '../types';
+import { RepairRequest } from "../types";
 
-const API_URL = 'http://localhost:5240/api'; // ← твой настоящий сервер
+const API_URL = "http://localhost:5000/api";
 
-class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-    this.name = 'ApiError';
-  }
+// Функция для добавления Authorization заголовка
+function getAuthHeader() {
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: "Bearer " + token } : {};
 }
 
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const error = await response.text();
-    throw new ApiError(response.status, error || response.statusText);
-  }
-  return response.json();
-};
+// ======================= Auth =======================
 
-// Сохраняем токен в localStorage
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+// Регистрация
+export async function register(name: string, email: string, password: string, phone?: string) {
+  const res = await fetch(`${API_URL}/Auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, password, phone }),
+  });
+  if (!res.ok) throw new Error("Ошибка регистрации");
+  return res.json();
+}
 
-export const api = {
-  // --- Auth ---
-  login: async (email: string, password: string): Promise<{ user: User; token: string }> => {
-    const res = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await handleResponse(res);
-    localStorage.setItem('token', data.token);
-    return { user: data.user, token: data.token };
-  },
+// Логин
+export async function login(email: string, password: string) {
+  const res = await fetch(`${API_URL}/Auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) throw new Error("Ошибка логина");
+  return res.json(); // AuthResponseDto
+}
 
-  // --- Requests ---
-  getRequests: async (): Promise<RepairRequest[]> => {
-    const res = await fetch(`${API_URL}/requests`, {
-      headers: { ...getAuthHeaders() },
-    });
-    return handleResponse(res);
-  },
+// ======================= Users =======================
 
-  createRequest: async (request: Omit<RepairRequest, 'id' | 'createdAt' | 'comments' | 'status'>): Promise<RepairRequest> => {
-    const res = await fetch(`${API_URL}/requests`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify(request),
-    });
-    return handleResponse(res);
-  },
+// Все пользователи
+export async function getUsers() {
+  const res = await fetch(`${API_URL}/Users`, {
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) throw new Error("Не удалось получить пользователей");
+  return res.json();
+}
 
-  // --- Services ---
-  getServices: async (): Promise<Service[]> => {
-    const res = await fetch(`${API_URL}/services`, {
-      headers: { ...getAuthHeaders() },
-    });
-    return handleResponse(res);
-  },
+// Только техники
+export async function getTechnicians() {
+  const res = await fetch(`${API_URL}/Users/technicians`, {
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) throw new Error("Не удалось получить мастеров");
+  return res.json();
+}
 
-  // --- Users ---
-  getTechnicians: async (): Promise<User[]> => {
-    const res = await fetch(`${API_URL}/users/technicians`, {
-      headers: { ...getAuthHeaders() },
-    });
-    return handleResponse(res);
-  },
+// ======================= RepairRequests =======================
+
+// Получить все заявки
+export async function getRepairRequests() {
+  const res = await fetch(`${API_URL}/RepairRequests`, {
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) throw new Error("Не удалось получить заявки");
+  return res.json();
+}
+
+// Создать заявку
+export async function createRepairRequest(
+  clientId: number,
+  technicianId: number | null,
+  device: string,
+  issueDescription: string
+) {
+  const res = await fetch(`${API_URL}/RepairRequests`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify({ clientId, technicianId, device, issueDescription }),
+  });
+  if (!res.ok) throw new Error("Не удалось создать заявку");
+  return res.json();
+}
+
+// Обновить заявку
+export async function updateRepairRequest(
+  id: number,
+  technicianId: number | null,
+  device: string,
+  issueDescription: string,
+  status: string
+) {
+  const res = await fetch(`${API_URL}/RepairRequests/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify({ technicianId, device, issueDescription, status }),
+  });
+  if (!res.ok) throw new Error("Не удалось обновить заявку");
+  return res.json();
+}
+
+// ======================= Comments =======================
+
+// Получить комментарии по заявке
+export async function getComments(requestId: number) {
+  const res = await fetch(`${API_URL}/Comments/${requestId}`, {
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) throw new Error("Не удалось получить комментарии");
+  return res.json();
+}
+
+// ======================= Services =======================
+
+// Получить все услуги
+export async function getServices() {
+  const res = await fetch(`${API_URL}/Services`, {
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) throw new Error("Не удалось получить услуги");
+  return res.json();
+}
+
+export const getAllRepairRequests = async (): Promise<RepairRequest[]> => {
+    try {
+        const token = localStorage.getItem("token"); // JWT токен пользователя
+        const response = await fetch("https://localhost:5001/api/RepairRequests", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ошибка при получении заявок: ${response.statusText}`);
+        }
+
+        const data: RepairRequest[] = await response.json();
+        return data;
+    } catch (error) {
+        console.error("getAllRepairRequests error:", error);
+        throw error;
+    }
 };

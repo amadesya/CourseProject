@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { AuthContext } from '../App';
+import { AuthContext } from '../AuthContext';
 import { Role } from '../types';
 import RequestsPage from './RequestsPage';
 import ServicesPage from './ServicesPage';
