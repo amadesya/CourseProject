@@ -1,4 +1,4 @@
-import { RepairRequest } from "../types";
+import { RepairRequest, AuthResponseDto, LoginDto, RegisterDto } from "../types";
 
 const API_URL = "http://localhost:5000/api";
 
@@ -11,26 +11,63 @@ function getAuthHeader() {
 // ======================= Auth =======================
 
 // Регистрация
-export async function register(name: string, email: string, password: string, phone?: string) {
-  const res = await fetch(`${API_URL}/Auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password, phone }),
-  });
-  if (!res.ok) throw new Error("Ошибка регистрации");
-  return res.json();
-}
+export const login = async (
+  email: string,
+  password: string
+): Promise<AuthResponseDto | null> => {
+  try {
+    const res = await fetch(`${API_URL}/Auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-// Логин
-export async function login(email: string, password: string) {
-  const res = await fetch(`${API_URL}/Auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) throw new Error("Ошибка логина");
-  return res.json(); // AuthResponseDto
-}
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Failed to login:", res.status, text);
+      return null;
+    }
+
+    const data: AuthResponseDto = await res.json();
+
+    // Сохраняем в localStorage
+    localStorage.setItem("smartfix_user", JSON.stringify(data));
+    localStorage.setItem("token", data.token);
+
+    return data;
+  } catch (err) {
+    console.error("Error login:", err);
+    return null;
+  }
+};
+
+export const register = async (
+  name: string,
+  email: string,
+  password: string,
+  phone?: string
+): Promise<AuthResponseDto | null> => {
+  try {
+    const res = await fetch(`${API_URL}/Auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password, phone }),
+    });
+
+    if (!res.ok) {
+      console.error('Failed to register:', res.status, await res.text());
+      return null;
+    }
+
+    // Твой сервер пока возвращает только message, поэтому создадим объект вручную
+    const json = await res.json();
+    // Если нужен токен сразу после регистрации — нужно изменить API, иначе возвращаем null
+    return null;
+  } catch (err) {
+    console.error('Error register:', err);
+    return null;
+  }
+};
 
 // ======================= Users =======================
 
@@ -59,9 +96,25 @@ export async function getRepairRequests() {
   const res = await fetch(`${API_URL}/RepairRequests`, {
     headers: { ...getAuthHeader() },
   });
+
   if (!res.ok) throw new Error("Не удалось получить заявки");
-  return res.json();
+
+  const data = await res.json();
+
+  return data.map((r: any) => ({
+    id: r.id,
+    clientName: r.clientName,
+    clientId: r.clientId,
+    device: r.device,
+    issueDescription: r.issueDescription,
+    status: r.status,
+    technicianId: r.technicianId,
+    technicianName: r.technicianName || 'Не назначен',
+    comments: r.comments || [],
+    createdAt: r.createdAt
+  }));
 }
+
 
 // Создать заявку
 export async function createRepairRequest(
@@ -123,3 +176,22 @@ export async function getServices() {
   if (!res.ok) throw new Error("Не удалось получить услуги");
   return res.json();
 }
+
+export async function getTechnicianRequests(
+  technicianId: number,
+  status?: string,
+  startDate?: string,
+  endDate?: string
+) {
+  const params = new URLSearchParams();
+
+  if (status && status !== 'all') params.append('status', status);
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+
+  const response = await fetch(`${API_URL}/RepairRequests/technician/${technicianId}?${params.toString()}`);
+
+  if (!response.ok) throw new Error("Failed to load technician requests");
+  return response.json();
+}
+

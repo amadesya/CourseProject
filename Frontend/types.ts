@@ -43,3 +43,22 @@ export interface RepairRequest {
   createdAt: string;
 }
 
+export interface AuthResponseDto {
+    id: number;
+    token: string;
+    name: string;
+    role: number;
+    isVerified: boolean;
+}
+
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface RegisterDto {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+}

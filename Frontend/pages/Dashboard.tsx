@@ -53,7 +53,7 @@ const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-8">
                      <div className="flex items-center">
                         <WrenchScrewdriverIcon className="w-8 h-8 text-smartfix-light" />
-                        <h1 className="text-3xl font-bold" style={{ fontFamily: "'Roboto', sans-serif" }}>СмартФикс</h1>
+                        <h1 className="text-3xl font-bold" style={{ fontFamily: "'Roboto', sans-serif" }}>SmartFix</h1>
                     </div>
                     <nav className="hidden md:flex items-center gap-2">
                         <NavItem page="requests" label="Заявки" />

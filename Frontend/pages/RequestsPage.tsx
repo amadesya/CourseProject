@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { createRepairRequest, getRepairRequests, getTechnicians, updateRepairRequest } from "../services/api";
+import { createRepairRequest, getRepairRequests, getTechnicians, updateRepairRequest, getTechnicianRequests} from "../services/api";
 import { RepairRequest, RequestStatus, Role, User } from '../types';
 import { AuthContext } from '../AuthContext';
 import Modal from '../components/Modal';
@@ -114,53 +114,92 @@ const RequestsPage: React.FC = () => {
     const [newStatus, setNewStatus] = useState<RequestStatus | ''>('');
     const [newComment, setNewComment] = useState('');
 
+const fetchData = async () => {
+    if (!user) return;
 
-    const fetchData = async () => {
-        if (!user) return;
+    setIsLoading(true);
 
-        setIsLoading(true);
-
-        try {
-            // Получаем список всех заявок
-            const data = await getRepairRequests();
-            setRequests(data);
-
-            // Если пользователь админ, подгружаем список мастеров
-            if (user.role === Role.Admin) {
-                const techs = await getTechnicians();
-                setTechnicians(techs);
-            }
-        } catch (error) {
-            console.error("Failed to fetch requests:", error);
-            alert("Не удалось загрузить заявки. Попробуйте позже.");
-        } finally {
-            setIsLoading(false);
+    try {
+        let data: RepairRequest[] = [];
+        
+        if (user.role === Role.Client) {
+            const all = await getRepairRequests();
+            data = all.filter(r => r.clientId === user.id);
         }
-    };
 
-    useEffect(() => {
-        fetchData();
-    }, [user]);
-
-    const filteredRequests = useMemo(() => {
-        let displayData = requests;
-
-        if (user?.role === Role.Technician) {
+        else if (user.role === Role.Technician) {
             if (activeTechTab === 'accepted') {
-                displayData = requests.filter(r => r.technicianId === user.id);
-            } else { // 'new' tab
-                displayData = requests.filter(r => r.status === RequestStatus.New && r.technicianId == null);
+
+                const status =
+                    filterStatus !== "all"
+                        ? filterStatus
+                        : undefined;
+
+                data = await getTechnicianRequests(
+                    user.id,
+                    status,
+                    startDate || undefined,
+                    endDate || undefined
+                );
+            }
+
+            else if (activeTechTab === 'new') {
+                const all = await getRepairRequests();
+
+                data = all.filter(r => r.technicianId === null);
+
+                if (filterStatus !== "all") {
+                    data = data.filter(r => r.status === filterStatus);
+                }
+
+                if (startDate || endDate) {
+                    data = data.filter(r => {
+                        const date = new Date(r.createdAt);
+                        const start = startDate ? new Date(startDate) : null;
+                        const end = endDate ? new Date(endDate) : null;
+                        return (!start || date >= start) &&
+                               (!end || date <= end);
+                    });
+                }
             }
         }
 
-        return displayData.filter(r => {
-            const statusMatch = filterStatus === 'all' || r.status === filterStatus;
-            const requestDate = new Date(r.createdAt);
-            const startDateMatch = !startDate || requestDate >= new Date(startDate);
-            const endDateMatch = !endDate || requestDate <= new Date(endDate);
-            return statusMatch && startDateMatch && endDateMatch;
-        });
-    }, [requests, filterStatus, startDate, endDate, user, activeTechTab]);
+        else if (user.role === Role.Admin) {
+            let all = await getRepairRequests();
+
+            if (filterStatus !== "all") {
+                all = all.filter(r => r.status === filterStatus);
+            }
+
+            if (startDate || endDate) {
+                all = all.filter(r => {
+                    const date = new Date(r.createdAt);
+                    const start = startDate ? new Date(startDate) : null;
+                    const end = endDate ? new Date(endDate) : null;
+                    return (!start || date >= start) &&
+                           (!end || date <= end);
+                });
+            }
+
+            data = all;
+
+            // подгружаем мастеров
+            const techs = await getTechnicians();
+            setTechnicians(techs);
+        }
+
+        setRequests(data);
+    } catch (error) {
+        console.error("Failed to fetch requests:", error);
+        alert("Не удалось загрузить заявки. Попробуйте позже.");
+    } finally {
+        setIsLoading(false);
+    }
+};
+
+useEffect(() => {
+    fetchData();
+}, [user, activeTechTab, filterStatus, startDate, endDate]);
 
     const handleUpdateRequest = async () => {
         if (!selectedRequest || !user) return;
@@ -456,7 +495,7 @@ const RequestsPage: React.FC = () => {
                 ) : (
                     <div className="bg-smartfix-darker rounded-2xl shadow-xl border border-smartfix-dark">
                         <div className="divide-y divide-smartfix-dark">
-                            {filteredRequests.length > 0 ? filteredRequests.map(req => (
+                            {requests.length > 0 ? requests.map(req => (
                                 <div key={req.id} className="p-4 hover:bg-smartfix-dark transition-colors duration-200">
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
                                         <div>

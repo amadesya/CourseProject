@@ -33,7 +33,7 @@ public class AuthController : ControllerBase
             Name = request.Name,
             Email = request.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password), 
-            Role = 0,           // 0 = Client
+            Role = 0,         
             IsVerified = false,
             Phone = request.Phone
         };
@@ -56,7 +56,8 @@ public class AuthController : ControllerBase
         var token = GenerateJwtToken(user);
 
         return Ok(new AuthResponseDto
-        {
+        { 
+            Id = user.Id,
             Token = token,
             Name = user.Name,
             Role = user.Role,
