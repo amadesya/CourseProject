@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { createRepairRequest, getRepairRequests, getTechnicians, updateRepairRequest} from "../services/api";
+import { createRepairRequest, getRepairRequests, getTechnicians, updateRepairRequest } from "../services/api";
 import { RepairRequest, RequestStatus, Role, User } from '../types';
 import { AuthContext } from '../AuthContext';
 import Modal from '../components/Modal';
@@ -98,7 +98,7 @@ const RequestsPage: React.FC = () => {
     const [requests, setRequests] = useState<RepairRequest[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedRequest, setSelectedRequest] = useState<RepairRequest | null>(null);
-    const [filterStatus, setFilterStatus] = useState<string>('all');
+    const [filterStatus, setFilterStatus] = useState<RequestStatus | 'all'>('all');
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
 
@@ -149,7 +149,7 @@ const RequestsPage: React.FC = () => {
             if (activeTechTab === 'accepted') {
                 displayData = requests.filter(r => r.technicianId === user.id);
             } else { // 'new' tab
-                displayData = requests.filter(r => r.status === RequestStatus.New && !r.technicianId);
+                displayData = requests.filter(r => r.status === RequestStatus.New && r.technicianId == null);
             }
         }
 
@@ -362,8 +362,10 @@ const RequestsPage: React.FC = () => {
                                 )}
                                 <div>
                                     <label className="block text-smartfix-light mb-1">Изменить статус</label>
-                                    <select value={newStatus} onChange={e => setNewStatus(e.target.value as RequestStatus)} className="w-full bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium">
-                                        {Object.values(RequestStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                                    <select value={newStatus} onChange={e => setNewStatus(e.target.value as RequestStatus)}>
+                                        {Object.values(RequestStatus).map(s => (
+                                            <option key={s} value={s}>{s}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div>

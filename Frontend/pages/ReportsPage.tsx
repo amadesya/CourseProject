@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import {getAllRepairRequests} from '../services/api';
+import { getRepairRequests, getTechnicians } from '../services/api';
 import { RepairRequest, RequestStatus, Role } from '../types';
 import { AuthContext } from '../AuthContext';
 
@@ -7,26 +7,50 @@ const ReportsPage: React.FC = () => {
     const { user } = useContext(AuthContext);
     const [requests, setRequests] = useState<RepairRequest[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const statusLabels: Record<RequestStatus, string> = {
+        [RequestStatus.New]: 'Новая',
+        [RequestStatus.InProgress]: 'В работе',
+        [RequestStatus.Ready]: 'Готова',
+        [RequestStatus.Closed]: 'Закрыта',
+        [RequestStatus.Rejected]: 'Отклонена',
+    };
+    const [technicians, setTechnicians] = useState<{ id: number, name: string }[]>([]);
+
     useEffect(() => {
+        if (!user) return;
+
         const fetchAllRequests = async () => {
-            if (!user) return;
-
             setIsLoading(true);
-
             try {
-                // Получаем все заявки с бэкенда
-                const allRequests = await getAllRepairRequests();
+                const allRequests = await getRepairRequests();
                 setRequests(allRequests);
             } catch (error) {
                 console.error("Failed to fetch requests for report:", error);
-                alert("Не удалось загрузить заявки для отчета. Попробуйте позже.");
             } finally {
                 setIsLoading(false);
             }
         };
 
         fetchAllRequests();
+
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const allRequests = await getRepairRequests();
+                setRequests(allRequests);
+
+                const allTechnicians = await getTechnicians();
+                setTechnicians(allTechnicians);
+            } catch (error) {
+                console.error("Failed to fetch requests or technicians:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
     }, [user]);
+
 
     const handlePrint = () => {
         window.print();
@@ -58,14 +82,12 @@ const ReportsPage: React.FC = () => {
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         {Object.values(RequestStatus).map(status => (
                             <div key={status} className="bg-smartfix-darker p-4 rounded-md print:bg-gray-200">
-                                <p className="text-lg text-smartfix-light print:text-gray-700">{status}</p>
+                                {/* название статуса на русском */}
+                                <p className="text-lg text-smartfix-light print:text-gray-700">{statusLabels[status]}</p>
+                                {/* количество заявок с этим статусом */}
                                 <p className="text-3xl font-bold text-white print:text-black">{summary[status] || 0}</p>
                             </div>
                         ))}
-                        <div className="bg-smartfix-medium p-4 rounded-md print:bg-blue-200">
-                            <p className="text-lg text-smartfix-lightest font-semibold print:text-blue-800">Всего заявок</p>
-                            <p className="text-3xl font-bold text-white print:text-blue-900">{requests.length}</p>
-                        </div>
                     </div>
                 </div>
 
@@ -89,8 +111,12 @@ const ReportsPage: React.FC = () => {
                                         <td className="p-3 text-smartfix-lightest">{req.id}</td>
                                         <td className="p-3 text-smartfix-lightest">{req.clientName}</td>
                                         <td className="p-3 text-smartfix-lightest">{req.device}</td>
-                                        <td className="p-3">{req.technicianName || 'Не назначен'}</td>
-                                        <td className="p-3">{req.status}</td>
+                                        <td className="p-3">
+                                            {req.technicianId
+                                                ? technicians.find(t => t.id === req.technicianId)?.name || 'Неизвестно'
+                                                : 'Не назначен'}
+                                        </td>
+                                        <td className="p-3">{statusLabels[req.status]}</td>
                                         <td className="p-3">{new Date(req.createdAt).toLocaleDateString('ru-RU')}</td>
                                     </tr>
                                 ))}

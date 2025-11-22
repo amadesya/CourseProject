@@ -208,30 +208,6 @@ const LoginPage: React.FC = () => {
                         </button>
                     </div>
                 </form>
-
-                <div className="mt-6 pt-6 border-t border-smartfix-dark">
-                    <h4 className="text-center text-sm text-smartfix-light mb-4">Быстрый вход для тестирования</h4>
-                    <div className="flex justify-center gap-3">
-                        <button
-                            onClick={() => handleQuickLogin('admin@smartfix.com')}
-                            className="bg-smartfix-medium text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-opacity-80 transition-colors"
-                        >
-                            Админ
-                        </button>
-                        <button
-                            onClick={() => handleQuickLogin('ivan@smartfix.com')}
-                            className="bg-smartfix-medium text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-opacity-80 transition-colors"
-                        >
-                            Мастер
-                        </button>
-                        <button
-                            onClick={() => handleQuickLogin('anna@client.com')}
-                            className="bg-smartfix-medium text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-opacity-80 transition-colors"
-                        >
-                            Клиент
-                        </button>
-                    </div>
-                </div>
             </div>
         );
     }

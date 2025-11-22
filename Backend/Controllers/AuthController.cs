@@ -32,7 +32,7 @@ public class AuthController : ControllerBase
         {
             Name = request.Name,
             Email = request.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password), // правильный синтаксис для версии 4.x
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password), 
             Role = 0,           // 0 = Client
             IsVerified = false,
             Phone = request.Phone

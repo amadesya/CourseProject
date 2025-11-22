@@ -1,16 +1,15 @@
 export enum Role {
-  Client = 'Клиент',
-  Technician = 'Мастер',
-  Admin = 'Администратор',
-  Unauthorized = 'Неавторизованный',
+    Client = 0,
+    Technician = 1,
+    Admin = 2
 }
 
 export enum RequestStatus {
-  New = 'Новая',
-  InProgress = 'В работе',
-  Ready = 'Готова',
-  Closed = 'Закрыта',
-  Rejected = 'Отклонена',
+  New = 'New',
+  InProgress = 'InProgress',
+  Ready = 'Ready',
+  Closed = 'Closed',
+  Rejected = 'Rejected',
 }
 
 export interface User {

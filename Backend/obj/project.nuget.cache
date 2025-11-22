@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "CtIVNl84GTY=",
+  "dgSpecHash": "Nnx4/TTk3MI=",
   "success": true,
-  "projectFilePath": "C:\\Users\\E66\\Downloads\\SmartFixApi\\SmartFixApi\\SmartFixApi.csproj",
+  "projectFilePath": "D:\\Programming\\MyProjects\\CourseProj\\CourseProject\\Backend\\SmartFixApi.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\E66\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\E66\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",

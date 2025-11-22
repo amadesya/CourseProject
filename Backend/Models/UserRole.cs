@@ -1,4 +1,3 @@
-using SmartFixApi.Models;
 public enum UserRole
 {
     Client = 0,

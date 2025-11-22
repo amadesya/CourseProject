@@ -123,26 +123,3 @@ export async function getServices() {
   if (!res.ok) throw new Error("Не удалось получить услуги");
   return res.json();
 }
-
-export const getAllRepairRequests = async (): Promise<RepairRequest[]> => {
-    try {
-        const token = localStorage.getItem("token"); // JWT токен пользователя
-        const response = await fetch("https://localhost:5001/api/RepairRequests", {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Ошибка при получении заявок: ${response.statusText}`);
-        }
-
-        const data: RepairRequest[] = await response.json();
-        return data;
-    } catch (error) {
-        console.error("getAllRepairRequests error:", error);
-        throw error;
-    }
-};

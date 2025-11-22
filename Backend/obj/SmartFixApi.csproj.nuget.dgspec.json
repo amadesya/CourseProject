@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\E66\\Downloads\\SmartFixApi\\SmartFixApi\\SmartFixApi.csproj": {}
+    "D:\\Programming\\MyProjects\\CourseProj\\CourseProject\\Backend\\SmartFixApi.csproj": {}
   },
   "projects": {
-    "C:\\Users\\E66\\Downloads\\SmartFixApi\\SmartFixApi\\SmartFixApi.csproj": {
+    "D:\\Programming\\MyProjects\\CourseProj\\CourseProject\\Backend\\SmartFixApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\E66\\Downloads\\SmartFixApi\\SmartFixApi\\SmartFixApi.csproj",
+        "projectUniqueName": "D:\\Programming\\MyProjects\\CourseProj\\CourseProject\\Backend\\SmartFixApi.csproj",
         "projectName": "SmartFixApi",
-        "projectPath": "C:\\Users\\E66\\Downloads\\SmartFixApi\\SmartFixApi\\SmartFixApi.csproj",
+        "projectPath": "D:\\Programming\\MyProjects\\CourseProj\\CourseProject\\Backend\\SmartFixApi.csproj",
         "packagesPath": "C:\\Users\\E66\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\E66\\Downloads\\SmartFixApi\\SmartFixApi\\obj\\",
+        "outputPath": "D:\\Programming\\MyProjects\\CourseProj\\CourseProject\\Backend\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
