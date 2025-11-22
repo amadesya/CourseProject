@@ -82,12 +82,14 @@ const ReportsPage: React.FC = () => {
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         {Object.values(RequestStatus).map(status => (
                             <div key={status} className="bg-smartfix-darker p-4 rounded-md print:bg-gray-200">
-                                {/* название статуса на русском */}
                                 <p className="text-lg text-smartfix-light print:text-gray-700">{statusLabels[status]}</p>
-                                {/* количество заявок с этим статусом */}
                                 <p className="text-3xl font-bold text-white print:text-black">{summary[status] || 0}</p>
                             </div>
                         ))}
+                        <div className="bg-smartfix-medium p-4 rounded-md print:bg-blue-200">
+                            <p className="text-lg text-smartfix-lightest font-semibold print:text-blue-800">Всего заявок</p>
+                            <p className="text-3xl font-bold text-white print:text-blue-900">{requests.length}</p>
+                        </div>
                     </div>
                 </div>
 
