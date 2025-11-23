@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../AuthContext';
 import { RepairRequest } from '../types';
-import { getRepairRequests } from '../services/api';
+import { getRepairRequests, getTechnicianRequests } from '../services/api';
 import Calendar from '../components/Calendar';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
@@ -21,7 +21,7 @@ const SchedulePage: React.FC = () => {
 
             try {
                 // Получаем список заявок для календаря
-                const data = await getRepairRequests();
+                const data = await getTechnicianRequests(user.id, "all");
                 setRequests(data);
             } catch (error) {
                 console.error("Failed to fetch requests for calendar:", error);
