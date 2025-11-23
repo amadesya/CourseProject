@@ -28,7 +28,7 @@ CREATE TABLE RepairRequests (
     TechnicianId      INT NULL,
     Device            VARCHAR(150) NOT NULL,
     IssueDescription  TEXT NOT NULL,
-    Status            ENUM('New', 'InProgress', 'Ready', 'Closed') NOT NULL DEFAULT 'New',
+    Status            ENUM('New', 'InProgress', 'Ready', 'Closed', 'Rejected') NOT NULL DEFAULT 'New',
     CreatedAt         DATE NOT NULL,
 
     FOREIGN KEY (ClientId)     REFERENCES Users(Id) ON DELETE CASCADE,
