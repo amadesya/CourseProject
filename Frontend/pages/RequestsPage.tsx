@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { createRepairRequest, getRepairRequests, getTechnicians, updateRepairRequest, getTechnicianRequests} from "../services/api";
+import { createRepairRequest, getRepairRequests, getTechnicians, updateRepairRequest, getTechnicianRequests } from "../services/api";
 import { RepairRequest, RequestStatus, Role, User } from '../types';
 import { AuthContext } from '../AuthContext';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
+import StatusSelect from '../components/StatusSelect';
 
 const NewRequestForm: React.FC<{ user: User; onSubmitted: () => void }> = ({ user, onSubmitted }) => {
     const [deviceType, setDeviceType] = useState('');
@@ -12,6 +13,7 @@ const NewRequestForm: React.FC<{ user: User; onSubmitted: () => void }> = ({ use
     const [issueDescription, setIssueDescription] = useState('');
     const [urgency, setUrgency] = useState('standard');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [filterStatus, setFilterStatus] = useState<RequestStatus | 'all'>('all');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -114,97 +116,95 @@ const RequestsPage: React.FC = () => {
     const [newStatus, setNewStatus] = useState<RequestStatus | ''>('');
     const [newComment, setNewComment] = useState('');
 
-const fetchData = async () => {
-    if (!user) return;
+    const fetchData = async () => {
+        if (!user) return;
 
-    setIsLoading(true);
+        setIsLoading(true);
 
-    try {
-        let data: RepairRequest[] = [];
-        
-        if (user.role === Role.Client) {
-            const all = await getRepairRequests();
-            data = all.filter(r => r.clientId === user.id);
-        }
+        try {
+            let data: RepairRequest[] = [];
 
-        else if (user.role === Role.Technician) {
-            if (activeTechTab === 'accepted') {
-
-                const status =
-                    filterStatus !== "all"
-                        ? filterStatus
-                        : undefined;
-
-                data = await getTechnicianRequests(
-                    user.id,
-                    status,
-                    startDate || undefined,
-                    endDate || undefined
-                );
+            if (user.role === Role.Client) {
+                const all = await getRepairRequests();
+                data = all.filter(r => r.clientId === user.id);
             }
 
-            else if (activeTechTab === 'new') {
-                const all = await getRepairRequests();
+            else if (user.role === Role.Technician) {
+                if (activeTechTab === 'accepted') {
 
-                data = all.filter(r => r.technicianId === null);
+                    const status =
+                        filterStatus !== "all"
+                            ? filterStatus
+                            : undefined;
+
+                    data = await getTechnicianRequests(
+                        user.id,
+                        status,
+                        startDate || undefined,
+                        endDate || undefined
+                    );
+                }
+
+                else if (activeTechTab === 'new') {
+                    const all = await getRepairRequests();
+
+                    data = all.filter(r => r.technicianId === null);
+
+                    if (filterStatus !== "all") {
+                        data = data.filter(r => r.status === filterStatus);
+                    }
+
+                    if (startDate || endDate) {
+                        data = data.filter(r => {
+                            const date = new Date(r.createdAt);
+                            const start = startDate ? new Date(startDate) : null;
+                            const end = endDate ? new Date(endDate) : null;
+                            return (!start || date >= start) &&
+                                (!end || date <= end);
+                        });
+                    }
+                }
+            }
+
+            else if (user.role === Role.Admin) {
+                let all = await getRepairRequests();
 
                 if (filterStatus !== "all") {
-                    data = data.filter(r => r.status === filterStatus);
+                    all = all.filter(r => r.status === filterStatus);
                 }
 
                 if (startDate || endDate) {
-                    data = data.filter(r => {
+                    all = all.filter(r => {
                         const date = new Date(r.createdAt);
                         const start = startDate ? new Date(startDate) : null;
                         const end = endDate ? new Date(endDate) : null;
                         return (!start || date >= start) &&
-                               (!end || date <= end);
+                            (!end || date <= end);
                     });
                 }
+
+                data = all;
+
+                // подгружаем мастеров
+                const techs = await getTechnicians();
+                setTechnicians(techs);
             }
+
+            setRequests(data);
+        } catch (error) {
+            console.error("Failed to fetch requests:", error);
+            alert("Не удалось загрузить заявки. Попробуйте позже.");
+        } finally {
+            setIsLoading(false);
         }
+    };
 
-        else if (user.role === Role.Admin) {
-            let all = await getRepairRequests();
-
-            if (filterStatus !== "all") {
-                all = all.filter(r => r.status === filterStatus);
-            }
-
-            if (startDate || endDate) {
-                all = all.filter(r => {
-                    const date = new Date(r.createdAt);
-                    const start = startDate ? new Date(startDate) : null;
-                    const end = endDate ? new Date(endDate) : null;
-                    return (!start || date >= start) &&
-                           (!end || date <= end);
-                });
-            }
-
-            data = all;
-
-            // подгружаем мастеров
-            const techs = await getTechnicians();
-            setTechnicians(techs);
-        }
-
-        setRequests(data);
-    } catch (error) {
-        console.error("Failed to fetch requests:", error);
-        alert("Не удалось загрузить заявки. Попробуйте позже.");
-    } finally {
-        setIsLoading(false);
-    }
-};
-
-useEffect(() => {
-    fetchData();
-}, [user, activeTechTab, filterStatus, startDate, endDate]);
+    useEffect(() => {
+        fetchData();
+    }, [user, activeTechTab, filterStatus, startDate, endDate]);
 
     const handleUpdateRequest = async () => {
         if (!selectedRequest || !user) return;
-
-        let hasChanges = false;
 
         // Формируем новые значения
         const updatedStatus = newStatus && newStatus !== selectedRequest.status ? newStatus : selectedRequest.status;
@@ -213,11 +213,7 @@ useEffect(() => {
                 ? Number(selectedTechnician)
                 : selectedRequest.technicianId;
 
-        if (updatedStatus !== selectedRequest.status || updatedTechnicianId !== selectedRequest.technicianId || newComment.trim()) {
-            hasChanges = true;
-        }
-
-        // Добавляем новый комментарий, если есть
+        // Формируем новый комментарий
         const updatedComments = [...selectedRequest.comments];
         if (newComment.trim()) {
             updatedComments.push({
@@ -227,28 +223,28 @@ useEffect(() => {
             });
         }
 
-        if (hasChanges) {
-            try {
-                // Вызываем API для обновления заявки
-                await updateRepairRequest(
-                    selectedRequest.id,
-                    updatedTechnicianId ?? null,
-                    selectedRequest.device,
-                    selectedRequest.issueDescription,
-                    updatedStatus
-                );
+        try {
+            // Вызываем API для обновления заявки
+            await updateRepairRequest(
+                selectedRequest.id,
+                updatedTechnicianId ?? null,
+                selectedRequest.device,
+                selectedRequest.issueDescription,
+                updatedStatus
+            );
 
-                // Обновляем данные на странице
-                await fetchData();
+            // Если API отдельно обрабатывает комментарии, можно их отправить через отдельный эндпоинт
+            // Например: await addCommentToRequest(selectedRequest.id, updatedComments);
 
-                // Закрываем модалку с деталями
-                closeDetailsModal();
-            } catch (error) {
-                console.error("Failed to update request:", error);
-                alert("Не удалось обновить заявку. Попробуйте снова.");
-            }
-        } else {
+            // После успешного обновления перезагружаем список заявок
+            await fetchData();
+
+            // Сбрасываем состояние модалки и комментария
             closeDetailsModal();
+
+        } catch (error) {
+            console.error("Failed to update request:", error);
+            alert("Не удалось обновить заявку. Попробуйте снова.");
         }
     };
 
@@ -401,11 +397,10 @@ useEffect(() => {
                                 )}
                                 <div>
                                     <label className="block text-smartfix-light mb-1">Изменить статус</label>
-                                    <select value={newStatus} onChange={e => setNewStatus(e.target.value as RequestStatus)}>
-                                        {Object.values(RequestStatus).map(s => (
-                                            <option key={s} value={s}>{s}</option>
-                                        ))}
-                                    </select>
+                                    <StatusSelect
+                                        value={newStatus as RequestStatus} // текущий статус заявки
+                                        onChange={(val: RequestStatus) => setNewStatus(val)} // обновляем состояние
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-smartfix-light mb-1">Добавить комментарий</label>
@@ -454,7 +449,12 @@ useEffect(() => {
                     <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-smartfix-dark rounded-lg border border-smartfix-medium">
                         <div>
                             <label htmlFor="status-filter" className="text-sm font-medium text-smartfix-light mr-2">Статус:</label>
-                            <select id="status-filter" onChange={(e) => setFilterStatus(e.target.value)} value={filterStatus} className="bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light">
+                            <select
+                                id="status-filter"
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                                value={filterStatus}
+                                className="bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light"
+                            >
                                 <option value="all">Все статусы</option>
                                 {Object.values(RequestStatus).map(status => (
                                     <option key={status} value={status}>{status}</option>

@@ -66,7 +66,6 @@ const LoginPage: React.FC = () => {
         setError('');
 
         try {
-            // Здесь можно симулировать успешную верификацию
             const success = true;
 
             if (success) {
