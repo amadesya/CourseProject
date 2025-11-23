@@ -431,12 +431,6 @@ const RequestsPage: React.FC = () => {
                             Готовы к выдаче
                         </button>
                         <button 
-                            onClick={() => setActiveStatusTab(RequestStatus.Ready)} 
-                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Ready ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
-                        >
-                            Выполненные
-                        </button>
-                        <button 
                             onClick={() => setActiveStatusTab(RequestStatus.Rejected)} 
                             className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Rejected ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
                         >
