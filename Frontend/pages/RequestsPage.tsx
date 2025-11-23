@@ -13,7 +13,6 @@ const NewRequestForm: React.FC<{ user: User; onSubmitted: () => void }> = ({ use
     const [issueDescription, setIssueDescription] = useState('');
     const [urgency, setUrgency] = useState('standard');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [filterStatus, setFilterStatus] = useState<RequestStatus | 'all'>('all');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -107,8 +106,8 @@ const RequestsPage: React.FC = () => {
     // Client view state
     const [activeClientTab, setActiveClientTab] = useState<'list' | 'new'>('list');
 
-    // Technician view state
-    const [activeTechTab, setActiveTechTab] = useState<'accepted' | 'new'>('accepted');
+    // Status tab for filtering
+    const [activeStatusTab, setActiveStatusTab] = useState<RequestStatus | 'all'>('all');
 
     // State for request details modal
     const [technicians, setTechnicians] = useState<User[]>([]);
@@ -130,71 +129,32 @@ const RequestsPage: React.FC = () => {
             }
 
             else if (user.role === Role.Technician) {
-                if (activeTechTab === 'accepted') {
-
-                    const status =
-                        filterStatus !== "all"
-                            ? filterStatus
-                            : undefined;
-
-                    data = await getTechnicianRequests(
-                        user.id,
-                        status,
-                        startDate || undefined,
-                        endDate || undefined
-                    );
-                }
-
-                else if (activeTechTab === 'new') {
-                    const all = await getRepairRequests();
-
-                    // Показываем заявки, которые мастер еще не принял
-                    // (у текущего мастера нет принятых заявок с этим ID)
-                    data = all.filter(r => {
-                        // Заявки без мастера ИЛИ со статусом New
-                        return r.technicianId === null || r.status === RequestStatus.New;
-                    });
-
-                    console.log('Filtered new requests:', data);
-
-                    if (filterStatus !== "all") {
-                        data = data.filter(r => r.status === filterStatus);
-                    }
-
-                    if (startDate || endDate) {
-                        data = data.filter(r => {
-                            const date = new Date(r.createdAt);
-                            const start = startDate ? new Date(startDate) : null;
-                            const end = endDate ? new Date(endDate) : null;
-                            return (!start || date >= start) &&
-                                (!end || date <= end);
-                        });
-                    }
-                }
+                const all = await getRepairRequests();
+                // Фильтруем заявки мастера
+                data = all.filter(r => r.technicianId === user.id);
             }
 
             else if (user.role === Role.Admin) {
-                let all = await getRepairRequests();
-
-                if (filterStatus !== "all") {
-                    all = all.filter(r => r.status === filterStatus);
-                }
-
-                if (startDate || endDate) {
-                    all = all.filter(r => {
-                        const date = new Date(r.createdAt);
-                        const start = startDate ? new Date(startDate) : null;
-                        const end = endDate ? new Date(endDate) : null;
-                        return (!start || date >= start) &&
-                            (!end || date <= end);
-                    });
-                }
-
-                data = all;
-
+                data = await getRepairRequests();
+                
                 // подгружаем мастеров
                 const techs = await getTechnicians();
                 setTechnicians(techs);
+            }
+
+            // Применяем фильтр по статусу из вкладки
+            if (activeStatusTab !== 'all') {
+                data = data.filter(r => r.status === activeStatusTab);
+            }
+
+            // Применяем фильтр по датам
+            if (startDate || endDate) {
+                data = data.filter(r => {
+                    const date = new Date(r.createdAt);
+                    const start = startDate ? new Date(startDate) : null;
+                    const end = endDate ? new Date(endDate) : null;
+                    return (!start || date >= start) && (!end || date <= end);
+                });
             }
 
             setRequests(data);
@@ -208,7 +168,7 @@ const RequestsPage: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-    }, [user, activeTechTab, filterStatus, startDate, endDate]);
+    }, [user, activeStatusTab, filterStatus, startDate, endDate]);
 
     const handleUpdateRequest = async () => {
         if (!selectedRequest || !user) return;
@@ -291,7 +251,7 @@ const RequestsPage: React.FC = () => {
             closeDetailsModal();
 
             if (action === 'accept') {
-                setActiveTechTab('accepted');
+                setActiveStatusTab(RequestStatus.InProgress);
             }
         } catch (error) {
             console.error(`Failed to ${action} request:`, error);
@@ -322,6 +282,14 @@ const RequestsPage: React.FC = () => {
 
     const renderTechnicianActionModal = () => {
         if (!selectedRequest) return null;
+        
+        // Показываем модалку с кнопками "Принять/Отклонить" только для новых заявок без мастера
+        const isNewUnassigned = selectedRequest.status === RequestStatus.New && !selectedRequest.technicianId;
+        
+        if (!isNewUnassigned) {
+            return null;
+        }
+        
         return (
             <Modal isOpen={!!selectedRequest} onClose={closeDetailsModal} title={`Новая заявка #${selectedRequest.id}`}>
                 <div className="space-y-6">
@@ -350,7 +318,7 @@ const RequestsPage: React.FC = () => {
         if (!selectedRequest) return null;
 
         // Technician viewing a new, unassigned request
-        if (isTechnician && activeTechTab === 'new' && !selectedRequest.technicianId) {
+        if (isTechnician && selectedRequest.status === RequestStatus.New && !selectedRequest.technicianId) {
             return renderTechnicianActionModal();
         }
 
@@ -435,33 +403,68 @@ const RequestsPage: React.FC = () => {
 
         return (
             <>
-                {isTechnician && (
-                    <div className="flex border-b border-smartfix-dark mb-6">
-                        <button onClick={() => setActiveTechTab('accepted')} className={`px-6 py-3 text-lg font-semibold transition-colors ${activeTechTab === 'accepted' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}>
-                            Принятые
+                {/* Вкладки статусов для техников и админов */}
+                {!isClient && (
+                    <div className="flex flex-wrap border-b border-smartfix-dark mb-6 gap-2">
+                        <button 
+                            onClick={() => setActiveStatusTab('all')} 
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === 'all' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                        >
+                            Все
                         </button>
-                        <button onClick={() => setActiveTechTab('new')} className={`px-6 py-3 text-lg font-semibold transition-colors ${activeTechTab === 'new' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}>
+                        <button 
+                            onClick={() => setActiveStatusTab(RequestStatus.New)} 
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.New ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                        >
                             Новые
+                        </button>
+                        <button 
+                            onClick={() => setActiveStatusTab(RequestStatus.InProgress)} 
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.InProgress ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                        >
+                            В работе
+                        </button>
+                        <button 
+                            onClick={() => setActiveStatusTab(RequestStatus.Ready)} 
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Ready ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                        >
+                            Готовы к выдаче
+                        </button>
+                        <button 
+                            onClick={() => setActiveStatusTab(RequestStatus.Completed)} 
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Completed ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                        >
+                            Выполненные
+                        </button>
+                        <button 
+                            onClick={() => setActiveStatusTab(RequestStatus.Rejected)} 
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Rejected ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                        >
+                            Отклоненные
                         </button>
                     </div>
                 )}
 
+                {/* Фильтры */}
                 {!isClient && (
                     <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-smartfix-dark rounded-lg border border-smartfix-medium">
-                        <div>
-                            <label htmlFor="status-filter" className="text-sm font-medium text-smartfix-light mr-2">Статус:</label>
-                            <select
-                                id="status-filter"
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                                value={filterStatus}
-                                className="bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light"
-                            >
-                                <option value="all">Все статусы</option>
-                                {Object.values(RequestStatus).map(status => (
-                                    <option key={status} value={status}>{status}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {/* Фильтр по статусам показываем только во вкладке "Все" */}
+                        {activeStatusTab === 'all' && (
+                            <div>
+                                <label htmlFor="status-filter" className="text-sm font-medium text-smartfix-light mr-2">Статус:</label>
+                                <select
+                                    id="status-filter"
+                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                    value={filterStatus}
+                                    className="bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light"
+                                >
+                                    <option value="all">Все статусы</option>
+                                    {Object.values(RequestStatus).map(status => (
+                                        <option key={status} value={status}>{status}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         <div className="flex items-center gap-2">
                             <label htmlFor="start-date" className="text-sm font-medium text-smartfix-light">С:</label>
                             <input
@@ -483,7 +486,13 @@ const RequestsPage: React.FC = () => {
                             />
                         </div>
                         <button
-                            onClick={() => { setStartDate(''); setEndDate(''); setFilterStatus('all'); }}
+                            onClick={() => { 
+                                setStartDate(''); 
+                                setEndDate(''); 
+                                if (activeStatusTab === 'all') {
+                                    setFilterStatus('all');
+                                }
+                            }}
                             className="text-sm bg-smartfix-medium text-white px-4 py-2 rounded-lg hover:bg-opacity-80 transition-colors"
                         >
                             Сбросить фильтры
