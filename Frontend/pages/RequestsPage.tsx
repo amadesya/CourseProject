@@ -17,31 +17,36 @@ const NewRequestForm: React.FC<{ user: User; onSubmitted: () => void }> = ({ use
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!deviceType || !brand || !model || !issueDescription) {
+        if (!deviceType || !brand || !issueDescription) {
             alert('Пожалуйста, заполните все поля информации об устройстве и опишите проблему.');
             return;
         }
 
         setIsSubmitting(true);
 
-        const deviceFullName = `${deviceType} ${brand} ${model}`;
-        const issueFullDescription = `Срочность: ${urgency === 'urgent' ? 'Срочно' : 'Стандартная'}. Проблема: ${issueDescription}`;
-
         try {
+            // Собираем имя устройства для поля "Device" в бэкенде
+            const deviceFullName = `${deviceType} ${brand}`;
+            // Собираем описание проблемы для поля "IssueDescription"
+            const issueFullDescription = `Срочность: ${urgency === 'urgent' ? 'Срочно' : 'Стандартная'}. Проблема: ${issueDescription}`;
+
+            // Вызываем API для создания заявки
             const newRequest = await createRepairRequest(
-                user.id,
-                null,
-                deviceFullName,
-                issueFullDescription
+                user.id,         // clientId
+                null,            // technicianId
+                deviceFullName,  // device
+                issueFullDescription // issueDescription
             );
 
+            // Передаём результат родительскому компоненту
             onSubmitted(newRequest);
 
+            // Сбрасываем поля формы
             setDeviceType('');
             setBrand('');
-            setModel('');
             setIssueDescription('');
             setUrgency('standard');
+
         } catch (error) {
             console.error("Failed to create request:", error);
             alert('Не удалось создать заявку. Попробуйте снова.');
@@ -136,7 +141,7 @@ const RequestsPage: React.FC = () => {
 
             else if (user.role === Role.Admin) {
                 data = await getRepairRequests();
-                
+
                 // подгружаем мастеров
                 const techs = await getTechnicians();
                 setTechnicians(techs);
@@ -282,14 +287,14 @@ const RequestsPage: React.FC = () => {
 
     const renderTechnicianActionModal = () => {
         if (!selectedRequest) return null;
-        
+
         // Показываем модалку с кнопками "Принять/Отклонить" только для новых заявок без мастера
         const isNewUnassigned = selectedRequest.status === RequestStatus.New && !selectedRequest.technicianId;
-        
+
         if (!isNewUnassigned) {
             return null;
         }
-        
+
         return (
             <Modal isOpen={!!selectedRequest} onClose={closeDetailsModal} title={`Новая заявка #${selectedRequest.id}`}>
                 <div className="space-y-6">
@@ -406,32 +411,32 @@ const RequestsPage: React.FC = () => {
                 {/* Вкладки статусов для техников и админов */}
                 {!isClient && (
                     <div className="flex flex-wrap border-b border-smartfix-dark mb-6 gap-2">
-                        <button 
-                            onClick={() => setActiveStatusTab('all')} 
+                        <button
+                            onClick={() => setActiveStatusTab('all')}
                             className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === 'all' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
                         >
                             Все
                         </button>
-                        <button 
-                            onClick={() => setActiveStatusTab(RequestStatus.New)} 
+                        <button
+                            onClick={() => setActiveStatusTab(RequestStatus.New)}
                             className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.New ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
                         >
                             Новые
                         </button>
-                        <button 
-                            onClick={() => setActiveStatusTab(RequestStatus.InProgress)} 
+                        <button
+                            onClick={() => setActiveStatusTab(RequestStatus.InProgress)}
                             className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.InProgress ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
                         >
                             В работе
                         </button>
-                        <button 
-                            onClick={() => setActiveStatusTab(RequestStatus.Ready)} 
+                        <button
+                            onClick={() => setActiveStatusTab(RequestStatus.Ready)}
                             className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Ready ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
                         >
                             Готовы к выдаче
                         </button>
-                        <button 
-                            onClick={() => setActiveStatusTab(RequestStatus.Rejected)} 
+                        <button
+                            onClick={() => setActiveStatusTab(RequestStatus.Rejected)}
                             className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Rejected ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
                         >
                             Отклоненные
@@ -480,9 +485,9 @@ const RequestsPage: React.FC = () => {
                             />
                         </div>
                         <button
-                            onClick={() => { 
-                                setStartDate(''); 
-                                setEndDate(''); 
+                            onClick={() => {
+                                setStartDate('');
+                                setEndDate('');
                                 if (activeStatusTab === 'all') {
                                     setFilterStatus('all');
                                 }

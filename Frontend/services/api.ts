@@ -127,13 +127,15 @@ export async function createRepairRequest(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeader(),
+      Authorization: `Bearer ${localStorage.getItem('token')}`, // или user.token
     },
     body: JSON.stringify({ clientId, technicianId, device, issueDescription }),
   });
-  if (!res.ok) throw new Error("Не удалось создать заявку");
+
+  if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
 }
+
 
 // Обновить заявку
 export async function updateRepairRequest(

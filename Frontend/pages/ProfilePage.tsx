@@ -1,11 +1,10 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import { AuthContext } from '../AuthContext';
 import { updateUser } from '../services/api';
 import { User } from '../types';
 
 const ProfilePage: React.FC = () => {
     const { user, setUser } = useContext(AuthContext);
-    const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -21,23 +20,7 @@ const ProfilePage: React.FC = () => {
         confirmPassword: ''
     });
 
-    const [originalEmail, setOriginalEmail] = useState(user?.email || '');
-
-    useEffect(() => {
-        if (user) {
-            setFormData({
-                name: user.name || '',
-                email: user.email || '',
-                phone: user.phone || '',
-                avatar: user.avatar || '',
-                password: '',
-                confirmPassword: ''
-            });
-            setOriginalEmail(user.email || '');
-            setAvatarPreview(null);
-            setAvatarFile(null);
-        }
-    }, [user]);
+    const [originalEmail] = useState(user?.email || '');
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -128,13 +111,20 @@ const ProfilePage: React.FC = () => {
                 avatar: updatedUser.avatar
             };
 
-            // Обновляем контекст - это автоматически обновит localStorage
+            // Обновляем контекст
             setUser(updatedAuthUser);
             
+            // Обновляем форму с новыми данными
+            setFormData({
+                name: updatedUser.name,
+                email: updatedUser.email,
+                phone: updatedUser.phone || '',
+                avatar: updatedUser.avatar || '',
+                password: '',
+                confirmPassword: ''
+            });
+            
             setMessage({ type: 'success', text: 'Профиль успешно обновлен' });
-            setIsEditing(false);
-            setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
-            setOriginalEmail(updatedUser.email);
             setAvatarPreview(null);
             setAvatarFile(null);
 
@@ -193,16 +183,14 @@ const ProfilePage: React.FC = () => {
                                 formData.name.charAt(0).toUpperCase()
                             )}
                         </div>
-                        {isEditing && (
-                            <button
-                                type="button"
-                                onClick={handleAvatarButtonClick}
-                                className="absolute bottom-0 right-4 bg-smartfix-light text-smartfix-darkest rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-80 transition-colors"
-                                title="Изменить аватар"
-                            >
-                                📷
-                            </button>
-                        )}
+                        <button
+                            type="button"
+                            onClick={handleAvatarButtonClick}
+                            className="absolute bottom-0 right-4 bg-smartfix-light text-smartfix-darkest rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-80 transition-colors"
+                            title="Изменить аватар"
+                        >
+                            📷
+                        </button>
                     </div>
                     <div>
                         <h3 className="text-3xl font-bold">{formData.name}</h3>
@@ -232,15 +220,14 @@ const ProfilePage: React.FC = () => {
                                 name="name"
                                 value={formData.name}
                                 onChange={handleInputChange}
-                                disabled={!isEditing}
-                                className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
                                 required
                             />
                         </div>
 
                         <div>
                             <label className="block text-smartfix-light mb-2">Email</label>
-                            {isEditing && originalEmail !== formData.email && (
+                            {originalEmail !== formData.email && (
                                 <p className="text-sm text-smartfix-light mb-1">
                                     Текущий email: <span className="text-smartfix-lightest">{originalEmail}</span>
                                 </p>
@@ -250,8 +237,7 @@ const ProfilePage: React.FC = () => {
                                 name="email"
                                 value={formData.email}
                                 onChange={handleInputChange}
-                                disabled={!isEditing}
-                                className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
                                 required
                             />
                         </div>
@@ -263,101 +249,63 @@ const ProfilePage: React.FC = () => {
                                 name="phone"
                                 value={formData.phone}
                                 onChange={handleInputChange}
-                                disabled={!isEditing}
-                                className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
                             />
                         </div>
 
-                        {isEditing && (
-                            <div>
-                                <label className="block text-smartfix-light mb-2">URL аватара (опционально)</label>
-                                <input
-                                    type="url"
-                                    name="avatar"
-                                    value={formData.avatar}
-                                    onChange={handleInputChange}
-                                    disabled={!!avatarFile}
-                                    placeholder="https://example.com/avatar.jpg"
-                                    className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                                />
-                                <p className="text-sm text-smartfix-light mt-1">
-                                    {avatarFile ? 'Выбран файл с устройства' : 'Или загрузите файл, нажав на камеру выше'}
-                                </p>
-                            </div>
-                        )}
+                        <div>
+                            <label className="block text-smartfix-light mb-2">URL аватара (опционально)</label>
+                            <input
+                                type="url"
+                                name="avatar"
+                                value={formData.avatar}
+                                onChange={handleInputChange}
+                                disabled={!!avatarFile}
+                                placeholder="https://example.com/avatar.jpg"
+                                className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                            <p className="text-sm text-smartfix-light mt-1">
+                                {avatarFile ? 'Выбран файл с устройства' : 'Или загрузите файл, нажав на камеру выше'}
+                            </p>
+                        </div>
 
-                        {isEditing && (
-                            <div className="pt-4 border-t border-smartfix-medium">
-                                <h4 className="text-xl font-semibold mb-4">Изменить пароль (необязательно)</h4>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-smartfix-light mb-2">Новый пароль</label>
-                                        <input
-                                            type="password"
-                                            name="password"
-                                            value={formData.password}
-                                            onChange={handleInputChange}
-                                            className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
-                                            placeholder="Оставьте пустым, чтобы не менять"
-                                        />
-                                    </div>
+                        <div className="pt-4 border-t border-smartfix-medium">
+                            <h4 className="text-xl font-semibold mb-4">Изменить пароль (необязательно)</h4>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-smartfix-light mb-2">Новый пароль</label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        value={formData.password}
+                                        onChange={handleInputChange}
+                                        className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
+                                        placeholder="Оставьте пустым, чтобы не менять"
+                                    />
+                                </div>
 
-                                    <div>
-                                        <label className="block text-smartfix-light mb-2">Подтвердите пароль</label>
-                                        <input
-                                            type="password"
-                                            name="confirmPassword"
-                                            value={formData.confirmPassword}
-                                            onChange={handleInputChange}
-                                            className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
-                                        />
-                                    </div>
+                                <div>
+                                    <label className="block text-smartfix-light mb-2">Подтвердите пароль</label>
+                                    <input
+                                        type="password"
+                                        name="confirmPassword"
+                                        value={formData.confirmPassword}
+                                        onChange={handleInputChange}
+                                        className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
+                                    />
                                 </div>
                             </div>
-                        )}
+                        </div>
                     </div>
 
                     <div className="flex gap-4 mt-8">
-                        {!isEditing ? (
-                            <button
-                                type="button"
-                                onClick={() => setIsEditing(true)}
-                                className="bg-smartfix-light text-smartfix-darkest font-bold py-3 px-6 rounded-lg hover:bg-opacity-80 transition-colors"
-                            >
-                                Редактировать профиль
-                            </button>
-                        ) : (
-                            <>
-                                <button
-                                    type="submit"
-                                    disabled={isSaving}
-                                    className="bg-smartfix-light text-smartfix-darkest font-bold py-3 px-6 rounded-lg hover:bg-opacity-80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setIsEditing(false);
-                                        setFormData({
-                                            name: user.name || '',
-                                            email: user.email || '',
-                                            phone: user.phone || '',
-                                            avatar: user.avatar || '',
-                                            password: '',
-                                            confirmPassword: ''
-                                        });
-                                        setMessage(null);
-                                        setAvatarPreview(null);
-                                        setAvatarFile(null);
-                                    }}
-                                    disabled={isSaving}
-                                    className="bg-smartfix-medium text-smartfix-lightest font-bold py-3 px-6 rounded-lg hover:bg-opacity-80 transition-colors disabled:opacity-50"
-                                >
-                                    Отмена
-                                </button>
-                            </>
-                        )}
+                        <button
+                            type="submit"
+                            disabled={isSaving}
+                            className="bg-smartfix-light text-smartfix-darkest font-bold py-3 px-6 rounded-lg hover:bg-opacity-80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
+                        </button>
                     </div>
                 </form>
             </div>

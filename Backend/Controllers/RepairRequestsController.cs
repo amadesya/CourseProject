@@ -81,7 +81,7 @@ public class RepairRequestsController : ControllerBase
             TechnicianId = dto.TechnicianId,
             Device = dto.Device,
             IssueDescription = dto.IssueDescription,
-            Status = "Pending",
+            Status = "New",
             CreatedAt = DateTime.UtcNow
         };
 
