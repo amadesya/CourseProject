@@ -1,13 +1,16 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { AuthContext } from '../AuthContext';
 import { updateUser } from '../services/api';
-import { AuthResponseDto } from '../types';
+import { User } from '../types';
 
 const ProfilePage: React.FC = () => {
-    const { user, logout } = useContext(AuthContext);
+    const { user, setUser } = useContext(AuthContext);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const [formData, setFormData] = useState({
         name: user?.name || '',
@@ -17,6 +20,8 @@ const ProfilePage: React.FC = () => {
         password: '',
         confirmPassword: ''
     });
+
+    const [originalEmail, setOriginalEmail] = useState(user?.email || '');
 
     useEffect(() => {
         if (user) {
@@ -28,6 +33,9 @@ const ProfilePage: React.FC = () => {
                 password: '',
                 confirmPassword: ''
             });
+            setOriginalEmail(user.email || '');
+            setAvatarPreview(null);
+            setAvatarFile(null);
         }
     }, [user]);
 
@@ -36,12 +44,53 @@ const ProfilePage: React.FC = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (!file.type.startsWith('image/')) {
+                setMessage({ type: 'error', text: 'Пожалуйста, выберите изображение' });
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                setMessage({ type: 'error', text: 'Размер файла не должен превышать 5MB' });
+                return;
+            }
+
+            setAvatarFile(file);
+            
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setAvatarPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleAvatarButtonClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const convertFileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const result = reader.result as string;
+                resolve(result);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (!user) return;
+        if (!user || !setUser) {
+            setMessage({ type: 'error', text: 'Ошибка: контекст не инициализирован' });
+            return;
+        }
 
-        // Валидация пароля
         if (formData.password && formData.password !== formData.confirmPassword) {
             setMessage({ type: 'error', text: 'Пароли не совпадают' });
             return;
@@ -55,18 +104,23 @@ const ProfilePage: React.FC = () => {
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
-                avatar: formData.avatar
             };
 
-            // Добавляем пароль только если он был введен
+            if (avatarFile) {
+                const base64Avatar = await convertFileToBase64(avatarFile);
+                updateData.avatar = base64Avatar;
+            } else if (formData.avatar) {
+                updateData.avatar = formData.avatar;
+            }
+
             if (formData.password) {
                 updateData.password = formData.password;
             }
 
             const updatedUser = await updateUser(user.id, updateData);
 
-            // Обновляем данные в localStorage
-            const updatedAuthUser: AuthResponseDto = {
+            // Обновляем пользователя в контексте с сохранением токена
+            const updatedAuthUser: User = {
                 ...user,
                 name: updatedUser.name,
                 email: updatedUser.email,
@@ -74,14 +128,17 @@ const ProfilePage: React.FC = () => {
                 avatar: updatedUser.avatar
             };
 
-            localStorage.setItem('smartfix_user', JSON.stringify(updatedAuthUser));
+            // Обновляем контекст - это автоматически обновит localStorage
+            setUser(updatedAuthUser);
             
             setMessage({ type: 'success', text: 'Профиль успешно обновлен' });
             setIsEditing(false);
             setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
+            setOriginalEmail(updatedUser.email);
+            setAvatarPreview(null);
+            setAvatarFile(null);
 
-            // Перезагружаем страницу для обновления контекста
-            setTimeout(() => window.location.reload(), 1500);
+            setTimeout(() => setMessage(null), 3000);
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message || 'Ошибка при обновлении профиля' });
         } finally {
@@ -96,6 +153,16 @@ const ProfilePage: React.FC = () => {
             case 2: return 'Администратор';
             default: return 'Неизвестно';
         }
+    };
+
+    const getAvatarDisplay = () => {
+        if (avatarPreview) {
+            return avatarPreview;
+        }
+        if (formData.avatar) {
+            return formData.avatar;
+        }
+        return null;
     };
 
     if (!user) {
@@ -118,11 +185,23 @@ const ProfilePage: React.FC = () => {
 
             <div className="bg-smartfix-darker p-8 rounded-2xl">
                 <div className="flex items-center mb-8 pb-8 border-b border-smartfix-medium">
-                    <div className="w-24 h-24 rounded-full bg-smartfix-medium flex items-center justify-center text-4xl font-bold mr-6">
-                        {formData.avatar ? (
-                            <img src={formData.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                            formData.name.charAt(0).toUpperCase()
+                    <div className="relative">
+                        <div className="w-24 h-24 rounded-full bg-smartfix-medium flex items-center justify-center text-4xl font-bold mr-6">
+                            {getAvatarDisplay() ? (
+                                <img src={getAvatarDisplay()!} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                                formData.name.charAt(0).toUpperCase()
+                            )}
+                        </div>
+                        {isEditing && (
+                            <button
+                                type="button"
+                                onClick={handleAvatarButtonClick}
+                                className="absolute bottom-0 right-4 bg-smartfix-light text-smartfix-darkest rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-80 transition-colors"
+                                title="Изменить аватар"
+                            >
+                                📷
+                            </button>
                         )}
                     </div>
                     <div>
@@ -137,6 +216,14 @@ const ProfilePage: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleSubmit}>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarFileChange}
+                        className="hidden"
+                    />
+
                     <div className="space-y-6">
                         <div>
                             <label className="block text-smartfix-light mb-2">Имя</label>
@@ -153,6 +240,11 @@ const ProfilePage: React.FC = () => {
 
                         <div>
                             <label className="block text-smartfix-light mb-2">Email</label>
+                            {isEditing && originalEmail !== formData.email && (
+                                <p className="text-sm text-smartfix-light mb-1">
+                                    Текущий email: <span className="text-smartfix-lightest">{originalEmail}</span>
+                                </p>
+                            )}
                             <input
                                 type="email"
                                 name="email"
@@ -176,49 +268,52 @@ const ProfilePage: React.FC = () => {
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-smartfix-light mb-2">URL аватара</label>
-                            <input
-                                type="url"
-                                name="avatar"
-                                value={formData.avatar}
-                                onChange={handleInputChange}
-                                disabled={!isEditing}
-                                placeholder="https://example.com/avatar.jpg"
-                                className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                            />
-                        </div>
+                        {isEditing && (
+                            <div>
+                                <label className="block text-smartfix-light mb-2">URL аватара (опционально)</label>
+                                <input
+                                    type="url"
+                                    name="avatar"
+                                    value={formData.avatar}
+                                    onChange={handleInputChange}
+                                    disabled={!!avatarFile}
+                                    placeholder="https://example.com/avatar.jpg"
+                                    className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                                <p className="text-sm text-smartfix-light mt-1">
+                                    {avatarFile ? 'Выбран файл с устройства' : 'Или загрузите файл, нажав на камеру выше'}
+                                </p>
+                            </div>
+                        )}
 
                         {isEditing && (
-                            <>
-                                <div className="pt-4 border-t border-smartfix-medium">
-                                    <h4 className="text-xl font-semibold mb-4">Изменить пароль (необязательно)</h4>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-smartfix-light mb-2">Новый пароль</label>
-                                            <input
-                                                type="password"
-                                                name="password"
-                                                value={formData.password}
-                                                onChange={handleInputChange}
-                                                className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
-                                                placeholder="Оставьте пустым, чтобы не менять"
-                                            />
-                                        </div>
+                            <div className="pt-4 border-t border-smartfix-medium">
+                                <h4 className="text-xl font-semibold mb-4">Изменить пароль (необязательно)</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-smartfix-light mb-2">Новый пароль</label>
+                                        <input
+                                            type="password"
+                                            name="password"
+                                            value={formData.password}
+                                            onChange={handleInputChange}
+                                            className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
+                                            placeholder="Оставьте пустым, чтобы не менять"
+                                        />
+                                    </div>
 
-                                        <div>
-                                            <label className="block text-smartfix-light mb-2">Подтвердите пароль</label>
-                                            <input
-                                                type="password"
-                                                name="confirmPassword"
-                                                value={formData.confirmPassword}
-                                                onChange={handleInputChange}
-                                                className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
-                                            />
-                                        </div>
+                                    <div>
+                                        <label className="block text-smartfix-light mb-2">Подтвердите пароль</label>
+                                        <input
+                                            type="password"
+                                            name="confirmPassword"
+                                            value={formData.confirmPassword}
+                                            onChange={handleInputChange}
+                                            className="w-full p-3 bg-smartfix-dark rounded-lg border border-smartfix-medium focus:border-smartfix-light focus:outline-none"
+                                        />
                                     </div>
                                 </div>
-                            </>
+                            </div>
                         )}
                     </div>
 
@@ -253,6 +348,8 @@ const ProfilePage: React.FC = () => {
                                             confirmPassword: ''
                                         });
                                         setMessage(null);
+                                        setAvatarPreview(null);
+                                        setAvatarFile(null);
                                     }}
                                     disabled={isSaving}
                                     className="bg-smartfix-medium text-smartfix-lightest font-bold py-3 px-6 rounded-lg hover:bg-opacity-80 transition-colors disabled:opacity-50"

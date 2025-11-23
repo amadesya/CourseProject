@@ -47,8 +47,11 @@ export interface AuthResponseDto {
     id: number;
     token: string;
     name: string;
+    email: string;
     role: number;
     isVerified: boolean;
+    phone?: string;
+    avatar?: string;
 }
 
 export interface LoginDto {

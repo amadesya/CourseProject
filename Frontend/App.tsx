@@ -59,12 +59,23 @@ const App: React.FC = () => {
         }
     }, []);
 
+    // Функция для обновления пользователя
+    const updateUser = useCallback((updatedUser: User | null) => {
+        setUser(updatedUser);
+        if (updatedUser) {
+            localStorage.setItem('smartfix_user', JSON.stringify(updatedUser));
+        } else {
+            localStorage.removeItem('smartfix_user');
+        }
+    }, []);
+
     const authContextValue = useMemo(() => ({
         user,
+        setUser: updateUser,
         login: loginUser,
         logout: logoutUser,
         register: registerUserFn,
-    }), [user, loginUser, logoutUser, registerUserFn]);
+    }), [user, updateUser, loginUser, logoutUser, registerUserFn]);
 
     if (isLoading) {
         return (

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartFixApi.Data;
-using SmartFixApi.DTO;                        
+using SmartFixApi.DTO;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -32,8 +32,8 @@ public class AuthController : ControllerBase
         {
             Name = request.Name,
             Email = request.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password), 
-            Role = 0,         
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            Role = 0,
             IsVerified = false,
             Phone = request.Phone
         };
@@ -56,16 +56,19 @@ public class AuthController : ControllerBase
         var token = GenerateJwtToken(user);
 
         return Ok(new AuthResponseDto
-        { 
+        {
             Id = user.Id,
             Token = token,
             Name = user.Name,
+            Email = user.Email,      
             Role = user.Role,
-            IsVerified = user.IsVerified
+            IsVerified = user.IsVerified,
+            Phone = user.Phone,      
+            Avatar = user.Avatar      
         });
     }
 
-    private string GenerateJwtToken(User user)  
+    private string GenerateJwtToken(User user)
     {
         var claims = new[]
         {

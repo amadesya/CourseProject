@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartFixApi.Data;
-using SmartFixApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-using BCrypt.Net;
 
 namespace SmartFixApi.Controllers;
 

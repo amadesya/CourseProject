@@ -1,9 +1,10 @@
 import React, { createContext, useState, ReactNode } from 'react';
-import { AuthResponseDto } from './types'; // <- используем правильный тип
+import { AuthResponseDto } from './types';
 import * as api from './services/api';
 
 interface AuthContextType {
   user: AuthResponseDto | null;
+  setUser?: (user: AuthResponseDto | null) => void;
   login: (email: string, pass: string) => Promise<AuthResponseDto | null>;
   logout: () => void;
   register: (name: string, email: string, pass: string) => Promise<AuthResponseDto | null>;
@@ -11,6 +12,7 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
+  setUser: undefined,
   login: async () => null,
   logout: () => {},
   register: async () => null,
@@ -28,6 +30,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(userData);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
     localStorage.setItem('token', userData.token);
+  };
+
+  const updateUser = (userData: AuthResponseDto | null) => {
+    setUser(userData);
+    if (userData) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
   };
 
   const logout = () => {
@@ -59,7 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register }}>
+    <AuthContext.Provider value={{ user, setUser: updateUser, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );
