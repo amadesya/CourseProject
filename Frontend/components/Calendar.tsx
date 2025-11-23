@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RepairRequest } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
 
@@ -15,6 +15,7 @@ const Calendar: React.FC<CalendarProps> = ({ requests, onSelectRequest }) => {
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [dateError, setDateError] = useState<string>('');
 
   const daysOfWeek = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -36,12 +37,20 @@ const Calendar: React.FC<CalendarProps> = ({ requests, onSelectRequest }) => {
     }
   };
 
+  const formatDateForInput = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleDayClick = (date: Date) => {
     if (!rangeStart) {
       setRangeStart(date);
       setRangeEnd(null);
       setSelectedDate(date);
       setCurrentDate(date);
+      setDateError('');
       return;
     }
 
@@ -54,6 +63,7 @@ const Calendar: React.FC<CalendarProps> = ({ requests, onSelectRequest }) => {
       }
       setSelectedDate(date);
       setCurrentDate(date);
+      setDateError('');
       return;
     }
 
@@ -61,6 +71,7 @@ const Calendar: React.FC<CalendarProps> = ({ requests, onSelectRequest }) => {
     setRangeEnd(null);
     setSelectedDate(date);
     setCurrentDate(date);
+    setDateError('');
   };
 
   const renderTitle = () => {
@@ -86,20 +97,28 @@ const Calendar: React.FC<CalendarProps> = ({ requests, onSelectRequest }) => {
     }
   };
 
-  // фильтрация заявок по диапазону
+  // фильтрация заявок по диапазону для списка
   const filteredRequests = requests.filter(req => {
     const reqDate = new Date(req.createdAt);
+    reqDate.setHours(0, 0, 0, 0);
+    
     if (rangeStart && rangeEnd) {
-      return reqDate >= rangeStart && reqDate <= rangeEnd;
+      const start = new Date(rangeStart);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(rangeEnd);
+      end.setHours(23, 59, 59, 999);
+      return reqDate >= start && reqDate <= end;
     }
     if (rangeStart && !rangeEnd) {
-      return reqDate.toDateString() === rangeStart.toDateString();
+      const start = new Date(rangeStart);
+      start.setHours(0, 0, 0, 0);
+      return reqDate.toDateString() === start.toDateString();
     }
     return true; // если диапазон не выбран
   });
 
-  // группировка заявок по дате
-  const requestsByDate = filteredRequests.reduce((acc, req) => {
+  // группировка ВСЕХ заявок по дате (не фильтруем для календаря)
+  const requestsByDate = requests.reduce((acc, req) => {
     const date = new Date(req.createdAt).toDateString();
     if (!acc[date]) acc[date] = [];
     acc[date].push(req);
@@ -143,7 +162,10 @@ const Calendar: React.FC<CalendarProps> = ({ requests, onSelectRequest }) => {
               {requestsOnThisDay.map(req => (
                 <button
                   key={req.id}
-                  onClick={() => onSelectRequest(req)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectRequest(req);
+                  }}
                   className="w-full text-left bg-blue-500/30 text-blue-200 text-xs p-1 rounded truncate hover:bg-blue-500/50 transition-colors"
                   title={`Заявка #${req.id}: ${req.device}`}
                 >
@@ -213,7 +235,10 @@ const Calendar: React.FC<CalendarProps> = ({ requests, onSelectRequest }) => {
             {requestsOnThisDay.map(req => (
               <button
                 key={req.id}
-                onClick={() => onSelectRequest(req)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectRequest(req);
+                }}
                 className="w-full text-left bg-smartfix-dark p-2 rounded-lg shadow hover:bg-smartfix-medium transition-colors"
                 title={`${req.device}: ${req.issueDescription}`}
               >
@@ -227,57 +252,78 @@ const Calendar: React.FC<CalendarProps> = ({ requests, onSelectRequest }) => {
     });
   };
 
+  const handleStartDateChange = (dateStr: string) => {
+    if (dateStr) {
+      const picked = new Date(dateStr + 'T00:00:00');
+      setRangeStart(picked);
+      
+      if (rangeEnd && picked > rangeEnd) {
+        setDateError('Начальная дата не может быть позже конечной');
+      } else {
+        setDateError('');
+      }
+      
+      setSelectedDate(picked);
+      setCurrentDate(picked);
+    } else {
+      setRangeStart(null);
+      setSelectedDate(null);
+      setDateError('');
+    }
+  };
+
+  const handleEndDateChange = (dateStr: string) => {
+    if (dateStr) {
+      const picked = new Date(dateStr + 'T23:59:59');
+      
+      if (rangeStart && picked < rangeStart) {
+        setDateError('Конечная дата не может быть раньше начальной');
+        setRangeEnd(picked);
+      } else {
+        setRangeEnd(picked);
+        setDateError('');
+      }
+      
+      setCurrentDate(picked);
+    } else {
+      setRangeEnd(null);
+      setDateError('');
+    }
+  };
+
   return (
     <div className="bg-smartfix-darker p-6 rounded-2xl border border-smartfix-dark">
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2 p-1 bg-smartfix-dark rounded-lg">
-          <input
-            type="date"
-            onChange={e => {
-              const dateStr = e.target.value;
-              if (dateStr) {
-                const picked = new Date(dateStr);
-                setRangeStart(picked);
-                setRangeEnd(null);
-                setSelectedDate(picked);
-                setCurrentDate(picked);
-              } else {
-                setRangeStart(null);
-                setRangeEnd(null);
-                setSelectedDate(null);
-              }
-            }}
-            className="bg-smartfix-darker text-smartfix-lightest px-3 py-1 rounded-md border border-smartfix-medium"
-          />
-          <input
-            type="date"
-            onChange={e => {
-              const dateStr = e.target.value;
-              if (dateStr) {
-                const picked = new Date(dateStr);
-                setRangeEnd(picked);
-                if (rangeStart && picked < rangeStart) {
-                  setRangeStart(picked);
-                  setRangeEnd(rangeStart);
-                }
-                setCurrentDate(picked);
-              } else {
-                setRangeEnd(null);
-              }
-            }}
-            className="bg-smartfix-darker text-smartfix-lightest px-3 py-1 rounded-md border border-smartfix-medium"
-          />
-          {(rangeStart || rangeEnd) && (
-            <button
-              onClick={() => {
-                setRangeStart(null);
-                setRangeEnd(null);
-                setSelectedDate(null);
-              }}
-              className="text-sm text-red-300 hover:text-red-400"
-            >
-              Сбросить
-            </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 p-1 bg-smartfix-dark rounded-lg">
+            <input
+              type="date"
+              value={rangeStart ? formatDateForInput(rangeStart) : ''}
+              onChange={e => handleStartDateChange(e.target.value)}
+              className="bg-smartfix-darker text-smartfix-lightest px-3 py-1 rounded-md border border-smartfix-medium"
+            />
+            <input
+              type="date"
+              value={rangeEnd ? formatDateForInput(rangeEnd) : ''}
+              onChange={e => handleEndDateChange(e.target.value)}
+              className="bg-smartfix-darker text-smartfix-lightest px-3 py-1 rounded-md border border-smartfix-medium"
+            />
+            {(rangeStart || rangeEnd) && (
+              <button
+                onClick={() => {
+                  setRangeStart(null);
+                  setRangeEnd(null);
+                  setSelectedDate(null);
+                  setDateError('');
+                }}
+                className="text-sm text-red-300 hover:text-red-400"
+              >
+                Сбросить
+              </button>
+            )}
+          </div>
+          {dateError && (
+            <p className="text-red-400 text-sm ml-1">{dateError}</p>
           )}
         </div>
 
