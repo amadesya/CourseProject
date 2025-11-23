@@ -49,9 +49,10 @@ builder.Services.AddAuthorization();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://localhost:5174")
               .AllowAnyMethod()
-              .AllowAnyHeader());
+              .AllowAnyHeader()
+              .AllowCredentials());
 });
 
 var app = builder.Build();
@@ -65,12 +66,10 @@ app.UseSwaggerUI(c =>
 });
 
 // ------------------- Middleware -------------------
-app.UseRouting();           // обязательно перед CORS и Auth
-app.UseCors("AllowAll");
+app.UseRouting();
+app.UseCors("AllowAll");      
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ------------------- Map Controllers -------------------
 app.MapControllers();
-
 app.Run();

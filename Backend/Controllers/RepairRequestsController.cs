@@ -93,33 +93,34 @@ public class RepairRequestsController : ControllerBase
                             request);
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateRepairRequest(int id, [FromBody] RepairRequestUpdateDto dto)
+[HttpPut("{id}")]
+public async Task<IActionResult> UpdateRepairRequest(int id, [FromBody] RepairRequestUpdateDto dto)
+{
+    var request = await _db.RepairRequests.FindAsync(id);
+
+    if (request == null)
+        return NotFound($"Repair request with id={id} not found.");
+
+    request.Device = dto.Device;
+    request.IssueDescription = dto.IssueDescription;
+    request.Status = dto.Status;
+
+    if (dto.TechnicianId.HasValue)
     {
-        var request = await _db.RepairRequests.FindAsync(id);
+        bool technicianExists = await _db.Users.AnyAsync(u => u.Id == dto.TechnicianId.Value && u.Role == 1);
+        if (!technicianExists)
+            return BadRequest("Technician not found or user is not a technician.");
 
-        if (request == null)
-            return NotFound($"Repair request with id={id} not found.");
-
-
-        request.Device = dto.Device;
-        request.IssueDescription = dto.IssueDescription;
-        request.Status = dto.Status;
-
-        if (dto.TechnicianId.HasValue)
-        {
-            bool technicianExists = await _db.Users.AnyAsync(u => u.Id == dto.TechnicianId.Value && u.Role == 1);
-            if (!technicianExists)
-                return BadRequest("Technician not found or user is not a technician.");
-
-            request.TechnicianId = dto.TechnicianId;
-        }
-
-        await _db.SaveChangesAsync();
-
-        return NoContent();
+        request.TechnicianId = dto.TechnicianId;
     }
 
+    await _db.SaveChangesAsync();
 
+    // Вместо NoContent() возвращаем обновленную заявку
+    return Ok(new { 
+        message = "Request updated successfully",
+        id = request.Id 
+    });
+}
 }
 
