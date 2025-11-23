@@ -26,7 +26,7 @@ const NewRequestForm: React.FC<{ user: User; onSubmitted: () => void }> = ({ use
 
         try {
             // Собираем имя устройства для поля "Device" в бэкенде
-            const deviceFullName = `${deviceType} ${brand}`;
+            const deviceFullName = `${deviceType} ${brand} ${model}`.trim();
             // Собираем описание проблемы для поля "IssueDescription"
             const issueFullDescription = `Срочность: ${urgency === 'urgent' ? 'Срочно' : 'Стандартная'}. Проблема: ${issueDescription}`;
 
@@ -136,7 +136,7 @@ const RequestsPage: React.FC = () => {
             else if (user.role === Role.Technician) {
                 const all = await getRepairRequests();
                 // Фильтруем заявки мастера
-                data = all.filter(r => r.technicianId === user.id);
+                data = all.filter(r => r.technicianId === user.id || (r.status === RequestStatus.New && r.technicianId === null));
             }
 
             else if (user.role === Role.Admin) {
