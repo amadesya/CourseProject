@@ -148,7 +148,14 @@ const RequestsPage: React.FC = () => {
                 else if (activeTechTab === 'new') {
                     const all = await getRepairRequests();
 
-                    data = all.filter(r => r.technicianId === null);
+                    // Показываем заявки, которые мастер еще не принял
+                    // (у текущего мастера нет принятых заявок с этим ID)
+                    data = all.filter(r => {
+                        // Заявки без мастера ИЛИ со статусом New
+                        return r.technicianId === null || r.status === RequestStatus.New;
+                    });
+
+                    console.log('Filtered new requests:', data);
 
                     if (filterStatus !== "all") {
                         data = data.filter(r => r.status === filterStatus);
@@ -233,18 +240,9 @@ const RequestsPage: React.FC = () => {
                 updatedStatus
             );
 
-            // Если API отдельно обрабатывает комментарии, можно их отправить через отдельный эндпоинт
-            // Например: await addCommentToRequest(selectedRequest.id, updatedComments);
-
-            // После успешного обновления перезагружаем список заявок
             await fetchData();
 
-            // Сбрасываем состояние модалки и комментария ПОСЛЕ успешной загрузки данных
             closeDetailsModal();
-
-            // Можно добавить уведомление об успехе
-            // alert("Заявка успешно обновлена!");
-
         } catch (error) {
             console.error("Failed to update request:", error);
             alert("Не удалось обновить заявку. Попробуйте снова.");
