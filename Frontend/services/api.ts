@@ -155,6 +155,33 @@ export async function updateRepairRequest(
   return res.json();
 }
 
+export async function updateUser(
+  id: number,
+  data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    avatar?: string;
+    password?: string;
+  }
+) {
+  const res = await fetch(`${API_URL}/Users/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Не удалось обновить пользователя");
+  }
+  
+  return res.json();
+}
+
 // ======================= Comments =======================
 
 // Получить комментарии по заявке
