@@ -177,33 +177,6 @@ export async function updateRepairRequest(
   return res.json();
 }
 
-export async function updateUser(
-  id: number,
-  data: {
-    name?: string;
-    email?: string;
-    phone?: string;
-    avatar?: string;
-    password?: string;
-  }
-) {
-  const res = await fetch(`${API_URL}/Users/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeader(),
-    },
-    body: JSON.stringify(data),
-  });
-  
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || "Не удалось обновить пользователя");
-  }
-  
-  return res.json();
-}
-
 // ======================= Comments =======================
 
 // Получить комментарии по заявке
@@ -244,3 +217,89 @@ export async function getTechnicianRequests(
   return response.json();
 }
 
+// Добавьте эти функции к существующим в api.ts
+
+// ======================= Users Management =======================
+
+export async function createUser(data: {
+  name: string;
+  email: string;
+  password: string;
+  role: number;
+  isVerified?: boolean;
+  phone?: string;
+  avatar?: string;
+}) {
+  const res = await fetch(`${API_URL}/Users`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Не удалось создать пользователя");
+  }
+  
+  return res.json();
+}
+
+export async function updateUser(
+  id: number,
+  data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    avatar?: string;
+    password?: string;
+    role?: number;
+    isVerified?: boolean;
+  }
+) {
+  const res = await fetch(`${API_URL}/Users/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Не удалось обновить пользователя");
+  }
+  
+  return res.json();
+}
+
+export async function deleteUser(id: number) {
+  const res = await fetch(`${API_URL}/Users/${id}`, {
+    method: "DELETE",
+    headers: {
+      ...getAuthHeader(),
+    },
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Не удалось удалить пользователя");
+  }
+  
+  return res.json();
+}
+
+export async function getUserById(id: number) {
+  const res = await fetch(`${API_URL}/Users/${id}`, {
+    headers: { ...getAuthHeader() },
+  });
+  
+  if (!res.ok) {
+    throw new Error("Не удалось получить пользователя");
+  }
+  
+  return res.json();
+}

@@ -1,3 +1,4 @@
+// Dashboard.tsx - обновленная версия
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../AuthContext';
 import { Role } from '../types';
@@ -6,9 +7,10 @@ import ServicesPage from './ServicesPage';
 import ReportsPage from './ReportsPage';
 import ProfilePage from './ProfilePage';
 import SchedulePage from './SchedulePage';
+import UsersPage from './UsersPage';
 import { ArrowRightOnRectangleIcon, WrenchScrewdriverIcon, UserIcon } from '../components/icons';
 
-type Page = 'requests' | 'services' | 'reports' | 'profile' | 'calendar';
+type Page = 'requests' | 'services' | 'reports' | 'profile' | 'calendar' | 'users';
 
 const Dashboard: React.FC = () => {
     const { user, logout } = useContext(AuthContext);
@@ -39,6 +41,8 @@ const Dashboard: React.FC = () => {
                 return <ProfilePage />;
             case 'calendar':
                 return <SchedulePage />;
+            case 'users':
+                return <UsersPage />;
             default:
                 return <RequestsPage />;
         }
@@ -61,8 +65,11 @@ const Dashboard: React.FC = () => {
                         {(user.role === Role.Admin || user.role === Role.Technician) && (
                             <NavItem page="reports" label="Отчёты" />
                         )}
-                        {(user.role === Role.Technician) && (
+                        {user.role === Role.Technician && (
                             <NavItem page="calendar" label="Мой график" />
+                        )}
+                        {user.role === Role.Admin && (
+                            <NavItem page="users" label="Пользователи" />
                         )}
                     </nav>
                 </div>
