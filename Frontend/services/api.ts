@@ -59,9 +59,7 @@ export const register = async (
       return null;
     }
 
-    // Твой сервер пока возвращает только message, поэтому создадим объект вручную
     const json = await res.json();
-    // Если нужен токен сразу после регистрации — нужно изменить API, иначе возвращаем null
     return null;
   } catch (err) {
     console.error('Error register:', err);
@@ -115,6 +113,28 @@ export async function getRepairRequests() {
   }));
 }
 
+export const importRepairRequests = async (data: any[]): Promise<{
+    imported: number;
+    skipped: number;
+    errors: string[];
+}> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/RepairRequests/import`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Ошибка импорта');
+    }
+
+    return response.json();
+};
 
 // Создать заявку
 export async function createRepairRequest(

@@ -288,7 +288,7 @@ const RequestsPage: React.FC = () => {
     const renderTechnicianActionModal = () => {
         if (!selectedRequest) return null;
 
-        // Показываем модалку с кнопками "Принять/Отклонить" только для новых заявок без мастера
+
         const isNewUnassigned = selectedRequest.status === RequestStatus.New && !selectedRequest.technicianId;
 
         if (!isNewUnassigned) {
