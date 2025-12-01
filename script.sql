@@ -6,7 +6,7 @@ CREATE TABLE Users (
     Id          INT AUTO_INCREMENT PRIMARY KEY,
     Name        VARCHAR(100) NOT NULL,
     Email       VARCHAR(255) NOT NULL UNIQUE,
-    PasswordHash VARCHAR(255) NOT NULL,           -- в реальном проекте хешируй через BCrypt
+    PasswordHash VARCHAR(255) NOT NULL,         
     Role        ENUM('Client', 'Technician', 'Admin') NOT NULL DEFAULT 'Client',
     IsVerified  BOOLEAN NOT NULL DEFAULT FALSE,
     Phone       VARCHAR(30) NULL,
