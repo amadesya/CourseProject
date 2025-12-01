@@ -1,30 +1,36 @@
 @startuml
-node "Пользовательский браузер"{
-  artifact "React Клиент"
-}
 
 
-node "Docker Host"{
-  node "Docker Compose"{
-      node "Frontend контейнер"{
-      artifact "Приложение React" <<frontend>>
-    }
-    node "Backend контейнер"{
-      artifact "ASP .NET Core API" <<backend>>
-      component "Контроллеры"
-      component "Сервисы"
-      component "Репозитории"
-      component "JWT Middleware"
-    }
-  
-  node "База данных Контейнер"{
-    artifact "MySQL" <<database>>
+node "<<устройство>>\nПользовательский Клиент" as UserClient {
+  node "Браузер" {
+    component "HTML5"
   }
 }
 
-"Пользовательский браузер" --> "Frontend контейнер" : HTTP
-"Frontend контейнер" --> "Backend контейнер" : HTTPS / JSON + JWT
-"Backend контейнер" -->  "База данных Контейнер" : SQL / EF Core
+node "<<устройство>>\nСервер" as Server {
+  node "<<Среда выполнения>>\nDocker Compose" {
+    node "<<Среда выполнения>>\nDocker" as FrontendContainer {
+      node "Frontend" {
+        artifact "Приложение React" <<frontend>>
+      }
+    }
 
+    node "<<Среда выполнения>>\nDocker" as BackendContainer {
+      node "Backend" {
+        artifact "ASP .NET Core API" <<backend>>
+      }
+    }
+
+    node "<<Среда выполнения>>\nDocker" as DBContainer {
+      node "База данных" {
+        artifact "Smartfix" <<database>>
+      }
+    }
+  }
+}
+
+UserClient --> "Frontend" : <<протокол>>\nHTTP
+"Frontend" --> "Backend" : HTTPS / JSON + JWT
+"Backend" --> "Smartfix" : SQL / EF Core
 
 @enduml
