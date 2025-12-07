@@ -30,6 +30,13 @@ export interface Service {
   price: number;
 }
 
+export interface ServiceDto {
+  name: string;
+  description?: string;
+  price: number;
+}
+
+
 export interface RepairRequest {
   id: number;
   clientName: string;
@@ -65,3 +72,4 @@ export interface RegisterDto {
   password: string;
   phone?: string;
 }
+

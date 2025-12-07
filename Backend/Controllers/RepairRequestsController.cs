@@ -201,6 +201,24 @@ public class RepairRequestsController : ControllerBase
             return BadRequest(new { message = "Ошибка импорта", error = ex.Message });
         }
     }
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteRepairRequest(int id)
+    {
+        var request = await _db.RepairRequests
+            .Include(r => r.Comments)
+            .FirstOrDefaultAsync(r => r.Id == id);
+
+        if (request == null)
+            return NotFound($"Repair request with id={id} not found.");
+
+        if (request.Comments.Any())
+            _db.Comments.RemoveRange(request.Comments);
+
+        _db.RepairRequests.Remove(request);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Repair request deleted successfully", id });
+    }
 }
 
 // DTO для импорта
@@ -222,3 +240,4 @@ public class ImportResult
     public int Skipped { get; set; }
     public List<string> Errors { get; set; } = new();
 }
+

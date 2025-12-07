@@ -87,14 +87,14 @@ public class UsersController : ControllerBase
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         var currentUserRole = int.Parse(User.FindFirst(ClaimTypes.Role)?.Value ?? "0");
-        
-        if (currentUserId != id && currentUserRole != 2) 
+
+        if (currentUserId != id && currentUserRole != 2)
         {
             return Forbid();
         }
 
         var user = await _context.Users.FindAsync(id);
-        
+
         if (user == null)
         {
             return NotFound(new { message = "Пользователь не найден" });
@@ -109,12 +109,12 @@ public class UsersController : ControllerBase
         {
             var emailExists = await _context.Users
                 .AnyAsync(u => u.Email == dto.Email && u.Id != id);
-            
+
             if (emailExists)
             {
                 return BadRequest(new { message = "Email уже используется" });
             }
-            
+
             user.Email = dto.Email;
         }
 
@@ -136,7 +136,7 @@ public class UsersController : ControllerBase
         try
         {
             await _context.SaveChangesAsync();
-            
+
             var updatedUserDto = new UserDto
             {
                 Id = user.Id,
@@ -155,4 +155,79 @@ public class UsersController : ControllerBase
             return StatusCode(500, new { message = "Ошибка при обновлении пользователя" });
         }
     }
+
+
+    [Authorize(Roles = "2")]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        var user = await _context.Users.FindAsync(id);
+
+        if (user == null)
+        {
+            return NotFound(new { message = "Пользователь не найден" });
+        }
+
+        _context.Users.Remove(user);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Пользователь успешно удален" });
+        }
+        catch (DbUpdateException)
+        {
+            return StatusCode(500, new { message = "Ошибка при удалении пользователя" });
+        }
+    }
+
+    [Authorize(Roles = "2")]
+    [HttpPost]
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
+    {
+        var emailExists = await _context.Users
+            .AnyAsync(u => u.Email == dto.Email);
+
+        if (emailExists)
+        {
+            return BadRequest(new { message = "Email уже используется" });
+        }
+
+        var user = new User
+        {
+            Name = dto.Name,
+            Email = dto.Email,
+            Phone = dto.Phone,
+            Avatar = dto.Avatar,
+            Role = dto.Role,
+            IsVerified = false,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
+        };
+
+        _context.Users.Add(user);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+
+            var userDto = new UserDto
+            {
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                Role = user.Role,
+                IsVerified = user.IsVerified,
+                Phone = user.Phone,
+                Avatar = user.Avatar
+            };
+
+            return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, userDto);
+        }
+        catch (DbUpdateException)
+        {
+            return StatusCode(500, new { message = "Ошибка при создании пользователя" });
+        }
+    }
+
+
 }

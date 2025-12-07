@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { createRepairRequest, getRepairRequests, getTechnicians, updateRepairRequest, getTechnicianRequests } from "../services/api";
+import React, { useState, useEffect, useContext } from 'react';
+import { createRepairRequest, getRepairRequests, getTechnicians, updateRepairRequest, createComment, getComments, CommentDto, deleteRepairRequest } from "../services/api";
 import { RepairRequest, RequestStatus, Role, User } from '../types';
 import { AuthContext } from '../AuthContext';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
 import StatusSelect from '../components/StatusSelect';
 
-const NewRequestForm: React.FC<{ user: User; onSubmitted: () => void }> = ({ user, onSubmitted }) => {
+const NewRequestForm: React.FC<{ user: User; onSubmitted: (newRequest: RepairRequest) => void }> = ({ user, onSubmitted }) => {
     const [deviceType, setDeviceType] = useState('');
     const [brand, setBrand] = useState('');
     const [model, setModel] = useState('');
@@ -25,25 +25,21 @@ const NewRequestForm: React.FC<{ user: User; onSubmitted: () => void }> = ({ use
         setIsSubmitting(true);
 
         try {
-            // Собираем имя устройства для поля "Device" в бэкенде
             const deviceFullName = `${deviceType} ${brand} ${model}`.trim();
-            // Собираем описание проблемы для поля "IssueDescription"
             const issueFullDescription = `Срочность: ${urgency === 'urgent' ? 'Срочно' : 'Стандартная'}. Проблема: ${issueDescription}`;
 
-            // Вызываем API для создания заявки
             const newRequest = await createRepairRequest(
-                user.id,         // clientId
-                null,            // technicianId
-                deviceFullName,  // device
-                issueFullDescription // issueDescription
+                user.id,
+                null,
+                deviceFullName,
+                issueFullDescription
             );
 
-            // Передаём результат родительскому компоненту
             onSubmitted(newRequest);
 
-            // Сбрасываем поля формы
             setDeviceType('');
             setBrand('');
+            setModel('');
             setIssueDescription('');
             setUrgency('standard');
 
@@ -63,34 +59,66 @@ const NewRequestForm: React.FC<{ user: User; onSubmitted: () => void }> = ({ use
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                         <div>
                             <label className="block text-smartfix-light mb-1 text-sm">Тип устройства</label>
-                            <input type="text" value={deviceType} onChange={e => setDeviceType(e.target.value)} placeholder="Телефон" className="w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light" />
+                            <input
+                                type="text"
+                                value={deviceType}
+                                onChange={e => setDeviceType(e.target.value)}
+                                placeholder="Телефон"
+                                className="w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-smartfix-lightest"
+                            />
                         </div>
                         <div>
                             <label className="block text-smartfix-light mb-1 text-sm">Бренд</label>
-                            <input type="text" value={brand} onChange={e => setBrand(e.target.value)} placeholder="Apple" className="w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light" />
+                            <input
+                                type="text"
+                                value={brand}
+                                onChange={e => setBrand(e.target.value)}
+                                placeholder="Apple"
+                                className="w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-smartfix-lightest"
+                            />
                         </div>
                         <div>
                             <label className="block text-smartfix-light mb-1 text-sm">Модель</label>
-                            <input type="text" value={model} onChange={e => setModel(e.target.value)} placeholder="iPhone 14 Pro" className="w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light" />
+                            <input
+                                type="text"
+                                value={model}
+                                onChange={e => setModel(e.target.value)}
+                                placeholder="iPhone 14 Pro"
+                                className="w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-smartfix-lightest"
+                            />
                         </div>
                     </div>
                 </fieldset>
 
                 <fieldset className="p-4 border border-smartfix-dark rounded-lg">
                     <legend className="px-2 font-semibold text-smartfix-lightest">Описание проблемы</legend>
-                    <textarea value={issueDescription} onChange={e => setIssueDescription(e.target.value)} placeholder="Например: разбит экран, не включается..." rows={4} className="mt-2 w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light"></textarea>
+                    <textarea
+                        value={issueDescription}
+                        onChange={e => setIssueDescription(e.target.value)}
+                        placeholder="Например: разбит экран, не включается..."
+                        rows={4}
+                        className="mt-2 w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-smartfix-lightest"
+                    />
                 </fieldset>
 
                 <fieldset className="p-4 border border-smartfix-dark rounded-lg">
                     <legend className="px-2 font-semibold text-smartfix-lightest">Срочность</legend>
-                    <select value={urgency} onChange={e => setUrgency(e.target.value)} className="mt-2 w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light">
+                    <select
+                        value={urgency}
+                        onChange={e => setUrgency(e.target.value)}
+                        className="mt-2 w-full bg-smartfix-dark p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-smartfix-lightest"
+                    >
                         <option value="standard">Стандартная</option>
                         <option value="urgent">Срочный ремонт</option>
                     </select>
                 </fieldset>
 
                 <div className="flex justify-end">
-                    <button type="submit" disabled={isSubmitting} className="bg-smartfix-light text-smartfix-darkest font-bold py-3 px-8 rounded-lg hover:bg-opacity-80 transition-colors disabled:bg-smartfix-medium">
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="bg-smartfix-light text-smartfix-darkest font-bold py-3 px-8 rounded-lg hover:bg-opacity-80 transition-colors disabled:bg-smartfix-medium"
+                    >
                         {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
                     </button>
                 </div>
@@ -108,17 +136,15 @@ const RequestsPage: React.FC = () => {
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
 
-    // Client view state
     const [activeClientTab, setActiveClientTab] = useState<'list' | 'new'>('list');
-
-    // Status tab for filtering
     const [activeStatusTab, setActiveStatusTab] = useState<RequestStatus | 'all'>('all');
 
-    // State for request details modal
     const [technicians, setTechnicians] = useState<User[]>([]);
     const [selectedTechnician, setSelectedTechnician] = useState<string>('');
     const [newStatus, setNewStatus] = useState<RequestStatus | ''>('');
     const [newComment, setNewComment] = useState('');
+    const [comments, setComments] = useState<CommentDto[]>([]);
+    const [isLoadingComments, setIsLoadingComments] = useState(false);
 
     const fetchData = async () => {
         if (!user) return;
@@ -131,28 +157,19 @@ const RequestsPage: React.FC = () => {
             if (user.role === Role.Client) {
                 const all = await getRepairRequests();
                 data = all.filter(r => r.clientId === user.id);
-            }
-
-            else if (user.role === Role.Technician) {
+            } else if (user.role === Role.Technician) {
                 const all = await getRepairRequests();
-                // Фильтруем заявки мастера
                 data = all.filter(r => r.technicianId === user.id || (r.status === RequestStatus.New && r.technicianId === null));
-            }
-
-            else if (user.role === Role.Admin) {
+            } else if (user.role === Role.Admin) {
                 data = await getRepairRequests();
-
-                // подгружаем мастеров
                 const techs = await getTechnicians();
                 setTechnicians(techs);
             }
 
-            // Применяем фильтр по статусу из вкладки
             if (activeStatusTab !== 'all') {
                 data = data.filter(r => r.status === activeStatusTab);
             }
 
-            // Применяем фильтр по датам
             if (startDate || endDate) {
                 data = data.filter(r => {
                     const date = new Date(r.createdAt);
@@ -173,30 +190,18 @@ const RequestsPage: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-    }, [user, activeStatusTab, filterStatus, startDate, endDate]);
+    }, [user, activeStatusTab, startDate, endDate]);
 
     const handleUpdateRequest = async () => {
         if (!selectedRequest || !user) return;
 
-        // Формируем новые значения
         const updatedStatus = newStatus && newStatus !== selectedRequest.status ? newStatus : selectedRequest.status;
         const updatedTechnicianId =
             user.role === Role.Admin && selectedTechnician && Number(selectedTechnician) !== selectedRequest.technicianId
                 ? Number(selectedTechnician)
                 : selectedRequest.technicianId;
 
-        // Формируем новый комментарий
-        const updatedComments = [...selectedRequest.comments];
-        if (newComment.trim()) {
-            updatedComments.push({
-                author: user.name,
-                text: newComment.trim(),
-                date: new Date().toLocaleString('ru-RU'),
-            });
-        }
-
         try {
-            // Вызываем API для обновления заявки
             await updateRepairRequest(
                 selectedRequest.id,
                 updatedTechnicianId ?? null,
@@ -205,42 +210,62 @@ const RequestsPage: React.FC = () => {
                 updatedStatus
             );
 
-            await fetchData();
+            if (newComment.trim()) {
+                await createComment({
+                    repairRequestId: selectedRequest.id,
+                    userId: user.id,
+                    text: newComment.trim()
+                });
 
-            closeDetailsModal();
+                // Перезагружаем комментарии после добавления нового
+                const updatedComments = await getComments(selectedRequest.id);
+                setComments(updatedComments || []);
+                setNewComment('');
+            }
+
+            await fetchData();
         } catch (error) {
             console.error("Failed to update request:", error);
             alert("Не удалось обновить заявку. Попробуйте снова.");
         }
     };
 
+    const handleDeleteRequest = async () => {
+        if (!selectedRequest || !user) return;
+
+        const confirmDelete = window.confirm(
+            `Вы уверены, что хотите удалить заявку #${selectedRequest.id}? Это действие невозможно отменить.`
+        );
+
+        if (!confirmDelete) return;
+
+        try {
+            await deleteRepairRequest(selectedRequest.id);
+            
+            alert('Заявка успешно удалена');
+            
+            closeDetailsModal();
+            await fetchData();
+        } catch (error) {
+            console.error("Failed to delete request:", error);
+            alert("Не удалось удалить заявку. Попробуйте снова.");
+        }
+    };
+
     const handleTechnicianAction = async (action: 'accept' | 'reject') => {
         if (!selectedRequest || !user || user.role !== Role.Technician) return;
 
-        // Копируем текущую заявку
-        const updatedComments = [...selectedRequest.comments];
         let updatedStatus = selectedRequest.status;
         let updatedTechnicianId = selectedRequest.technicianId;
 
         if (action === 'accept') {
             updatedTechnicianId = user.id;
             updatedStatus = RequestStatus.InProgress;
-            updatedComments.push({
-                author: 'Система',
-                text: `Мастер ${user.name} принял заявку в работу.`,
-                date: new Date().toLocaleString('ru-RU'),
-            });
-        } else { // reject
+        } else {
             updatedStatus = RequestStatus.Rejected;
-            updatedComments.push({
-                author: 'Система',
-                text: `Мастер ${user.name} отклонил заявку.`,
-                date: new Date().toLocaleString('ru-RU'),
-            });
         }
 
         try {
-            // Вызываем API для обновления заявки
             await updateRepairRequest(
                 selectedRequest.id,
                 updatedTechnicianId ?? null,
@@ -249,10 +274,17 @@ const RequestsPage: React.FC = () => {
                 updatedStatus
             );
 
-            // Обновляем список заявок
-            await fetchData();
+            const systemMessage = action === 'accept'
+                ? `Мастер ${user.name} принял заявку в работу.`
+                : `Мастер ${user.name} отклонил заявку.`;
 
-            // Закрываем модалку с деталями
+            await createComment({
+                repairRequestId: selectedRequest.id,
+                userId: user.id,
+                text: systemMessage
+            });
+
+            await fetchData();
             closeDetailsModal();
 
             if (action === 'accept') {
@@ -264,21 +296,35 @@ const RequestsPage: React.FC = () => {
         }
     };
 
-    const openDetailsModal = (request: RepairRequest) => {
+    const openDetailsModal = async (request: RepairRequest) => {
         setSelectedRequest(request);
         setNewStatus(request.status);
         setSelectedTechnician(request.technicianId?.toString() || '');
+        setNewComment('');
+
+        setIsLoadingComments(true);
+        try {
+            const fetchedComments = await getComments(request.id);
+            console.log('Loaded comments:', fetchedComments);
+            setComments(fetchedComments || []);
+        } catch (error) {
+            console.error('Failed to load comments:', error);
+            setComments([]);
+        } finally {
+            setIsLoadingComments(false);
+        }
     };
 
     const closeDetailsModal = () => {
         setSelectedRequest(null);
         setNewComment('');
-    }
+        setComments([]);
+    };
 
     const onNewRequestSubmitted = () => {
         fetchData();
         setActiveClientTab('list');
-    }
+    };
 
     if (!user) return null;
 
@@ -287,7 +333,6 @@ const RequestsPage: React.FC = () => {
 
     const renderTechnicianActionModal = () => {
         if (!selectedRequest) return null;
-
 
         const isNewUnassigned = selectedRequest.status === RequestStatus.New && !selectedRequest.technicianId;
 
@@ -307,22 +352,27 @@ const RequestsPage: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex justify-end pt-4 gap-4">
-                        <button onClick={() => handleTechnicianAction('reject')} className="bg-red-600/80 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 transition-colors">
+                        <button
+                            onClick={() => handleTechnicianAction('reject')}
+                            className="bg-red-600/80 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 transition-colors"
+                        >
                             Отклонить
                         </button>
-                        <button onClick={() => handleTechnicianAction('accept')} className="bg-green-600/80 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 transition-colors">
+                        <button
+                            onClick={() => handleTechnicianAction('accept')}
+                            className="bg-green-600/80 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 transition-colors"
+                        >
                             Принять в работу
                         </button>
                     </div>
                 </div>
             </Modal>
-        )
-    }
+        );
+    };
 
     const renderDetailsModal = () => {
         if (!selectedRequest) return null;
 
-        // Technician viewing a new, unassigned request
         if (isTechnician && selectedRequest.status === RequestStatus.New && !selectedRequest.technicianId) {
             return renderTechnicianActionModal();
         }
@@ -330,7 +380,6 @@ const RequestsPage: React.FC = () => {
         return (
             <Modal isOpen={!!selectedRequest} onClose={closeDetailsModal} title={`Заявка #${selectedRequest.id} - ${selectedRequest.device}`}>
                 <div className="space-y-6">
-                    {/* Request info */}
                     <div>
                         <h4 className="font-bold text-lg text-smartfix-lightest mb-2">Информация о заявке</h4>
                         <div className="grid grid-cols-2 gap-4 text-smartfix-light p-4 bg-smartfix-dark rounded-lg">
@@ -342,20 +391,30 @@ const RequestsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Comments */}
                     <div>
                         <h4 className="font-bold text-lg text-smartfix-lightest mb-2">Комментарии</h4>
                         <div className="space-y-3 max-h-48 overflow-y-auto bg-smartfix-dark p-4 rounded-lg">
-                            {selectedRequest.comments.length > 0 ? selectedRequest.comments.map((c, i) => (
-                                <div key={i} className="p-3 bg-smartfix-darker rounded-md">
-                                    <p className="text-sm text-smartfix-light"><span className="font-bold text-smartfix-lightest">{c.author}</span> - {c.date}</p>
-                                    <p className="mt-1 text-smartfix-lightest">{c.text}</p>
-                                </div>
-                            )) : <p className="text-smartfix-light">Комментариев пока нет.</p>}
+                            {isLoadingComments ? (
+                                <p className="text-smartfix-light text-center">Загрузка комментариев...</p>
+                            ) : comments.length > 0 ? (
+                                comments.map((c, i) => (
+                                    <div key={c.id || i} className="p-3 bg-smartfix-darker rounded-md">
+                                        <p className="text-sm text-smartfix-light">
+                                            <span className="font-bold text-smartfix-lightest">
+                                                Пользователь #{c.userId}
+                                            </span>
+                                            {' '}-{' '}
+                                            {c.date ? new Date(c.date).toLocaleString('ru-RU') : 'Дата неизвестна'}
+                                        </p>
+                                        <p className="mt-1 text-smartfix-lightest">{c.text}</p>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-smartfix-light">Комментариев пока нет.</p>
+                            )}
                         </div>
                     </div>
 
-                    {/* Actions */}
                     {(user.role === Role.Admin || user.role === Role.Technician) && (
                         <div>
                             <h4 className="font-bold text-lg text-smartfix-lightest mb-2">Изменить заявку</h4>
@@ -363,41 +422,68 @@ const RequestsPage: React.FC = () => {
                                 {user.role === Role.Admin && (
                                     <div>
                                         <label className="block text-smartfix-light mb-1">Назначить мастера</label>
-                                        <select value={selectedTechnician} onChange={e => setSelectedTechnician(e.target.value)} className="w-full bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium">
+                                        <select
+                                            value={selectedTechnician}
+                                            onChange={e => setSelectedTechnician(e.target.value)}
+                                            className="w-full bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium text-smartfix-lightest"
+                                        >
                                             <option value="">Не назначен</option>
-                                            {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                            {technicians.map(t => (
+                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                            ))}
                                         </select>
                                     </div>
                                 )}
                                 <div>
                                     <label className="block text-smartfix-light mb-1">Изменить статус</label>
                                     <StatusSelect
-                                        value={newStatus as RequestStatus} // текущий статус заявки
-                                        onChange={(val: RequestStatus) => setNewStatus(val)} // обновляем состояние
+                                        value={newStatus as RequestStatus}
+                                        onChange={(val: RequestStatus) => setNewStatus(val)}
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-smartfix-light mb-1">Добавить комментарий</label>
-                                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} rows={3} className="w-full bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium" />
+                                    <textarea
+                                        value={newComment}
+                                        onChange={e => setNewComment(e.target.value)}
+                                        rows={3}
+                                        placeholder="Введите комментарий..."
+                                        className="w-full bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium text-smartfix-lightest"
+                                    />
                                 </div>
                             </div>
                         </div>
                     )}
-
-                    <div className="flex justify-end pt-4 gap-4">
-                        <button onClick={closeDetailsModal} className="bg-smartfix-medium text-smartfix-lightest font-bold py-2 px-6 rounded-lg hover:bg-opacity-80 transition-colors">
-                            Закрыть
+                    <div className="flex pt-4 gap-4">
+                    {(user.role === Role.Admin || user.role === Role.Technician) && (
+                        <button
+                        onClick={handleDeleteRequest}
+                        className="bg-red-500 text-red-100 font-bold py-2 px-6 rounded-lg hover:bg-red-600 transition-colors"
+                        >
+                        Удалить
                         </button>
-                        {(user.role === Role.Admin || user.role === Role.Technician) && (
-                            <button onClick={handleUpdateRequest} className="bg-smartfix-light text-smartfix-darkest font-bold py-2 px-6 rounded-lg hover:bg-opacity-80 transition-colors">
-                                Сохранить
-                            </button>
-                        )}
+                    )}
+                    <button
+                        onClick={closeDetailsModal}
+                        className="ml-auto bg-smartfix-medium text-smartfix-lightest font-bold py-2 px-6 rounded-lg hover:bg-opacity-80 transition-colors"
+                    >
+                        Закрыть
+                    </button>
+                    {(user.role === Role.Admin || user.role === Role.Technician) && (
+                        <button
+                        onClick={handleUpdateRequest}
+                        className="bg-smartfix-light text-smartfix-darkest font-bold py-2 px-6 rounded-lg hover:bg-opacity-80 transition-colors"
+                        >
+                        Сохранить
+                        </button>
+                    )}
                     </div>
+
+
                 </div>
             </Modal>
-        )
-    }
+        );
+    };
 
     const renderContent = () => {
         if (isClient) {
@@ -408,54 +494,66 @@ const RequestsPage: React.FC = () => {
 
         return (
             <>
-                {/* Вкладки статусов для техников и админов */}
                 {!isClient && (
                     <div className="flex flex-wrap border-b border-smartfix-dark mb-6 gap-2">
                         <button
                             onClick={() => setActiveStatusTab('all')}
-                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === 'all' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === 'all'
+                                ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md'
+                                : 'text-smartfix-light hover:text-smartfix-lightest'
+                                }`}
                         >
                             Все
                         </button>
                         <button
                             onClick={() => setActiveStatusTab(RequestStatus.New)}
-                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.New ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.New
+                                ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md'
+                                : 'text-smartfix-light hover:text-smartfix-lightest'
+                                }`}
                         >
                             Новые
                         </button>
                         <button
                             onClick={() => setActiveStatusTab(RequestStatus.InProgress)}
-                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.InProgress ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.InProgress
+                                ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md'
+                                : 'text-smartfix-light hover:text-smartfix-lightest'
+                                }`}
                         >
                             В работе
                         </button>
                         <button
                             onClick={() => setActiveStatusTab(RequestStatus.Ready)}
-                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Ready ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Ready
+                                ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md'
+                                : 'text-smartfix-light hover:text-smartfix-lightest'
+                                }`}
                         >
                             Готовы к выдаче
                         </button>
                         <button
                             onClick={() => setActiveStatusTab(RequestStatus.Rejected)}
-                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Rejected ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}
+                            className={`px-4 py-3 text-sm font-semibold transition-colors ${activeStatusTab === RequestStatus.Rejected
+                                ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md'
+                                : 'text-smartfix-light hover:text-smartfix-lightest'
+                                }`}
                         >
                             Отклоненные
                         </button>
                     </div>
                 )}
 
-                {/* Фильтры */}
                 {!isClient && (
                     <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-smartfix-dark rounded-lg border border-smartfix-medium">
-                        {/* Фильтр по статусам показываем только во вкладке "Все" */}
                         {activeStatusTab === 'all' && (
                             <div>
                                 <label htmlFor="status-filter" className="text-sm font-medium text-smartfix-light mr-2">Статус:</label>
                                 <select
                                     id="status-filter"
-                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                    onChange={(e) => setFilterStatus(e.target.value as any)}
                                     value={filterStatus}
-                                    className="bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light"
+                                    className="bg-smartfix-darker p-2 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-smartfix-lightest"
                                 >
                                     <option value="all">Все статусы</option>
                                     {Object.values(RequestStatus).map(status => (
@@ -471,7 +569,7 @@ const RequestsPage: React.FC = () => {
                                 id="start-date"
                                 value={startDate}
                                 onChange={e => setStartDate(e.target.value)}
-                                className="bg-smartfix-darker p-1.5 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-sm"
+                                className="bg-smartfix-darker p-1.5 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-sm text-smartfix-lightest"
                             />
                         </div>
                         <div className="flex items-center gap-2">
@@ -481,7 +579,7 @@ const RequestsPage: React.FC = () => {
                                 id="end-date"
                                 value={endDate}
                                 onChange={e => setEndDate(e.target.value)}
-                                className="bg-smartfix-darker p-1.5 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-sm"
+                                className="bg-smartfix-darker p-1.5 rounded-lg border border-smartfix-medium focus:outline-none focus:ring-2 focus:ring-smartfix-light text-sm text-smartfix-lightest"
                             />
                         </div>
                         <button
@@ -500,60 +598,80 @@ const RequestsPage: React.FC = () => {
                 )}
 
                 {isLoading ? (
-                    <div className="text-center text-smartfix-light">Загрузка заявок...</div>
+                    <div className="text-center text-smartfix-light py-12">Загрузка заявок...</div>
                 ) : (
                     <div className="bg-smartfix-darker rounded-2xl shadow-xl border border-smartfix-dark">
                         <div className="divide-y divide-smartfix-dark">
-                            {requests.length > 0 ? requests.map(req => (
-                                <div key={req.id} className="p-4 hover:bg-smartfix-dark transition-colors duration-200">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
-                                        <div>
-                                            <div className="font-bold text-lg text-smartfix-lightest">Заявка #{req.id}</div>
-                                            <div className="text-sm text-smartfix-light">{new Date(req.createdAt).toLocaleDateString('ru-RU')}</div>
-                                        </div>
-                                        <div className="col-span-2 md:col-span-1">
-                                            <div className="font-semibold text-smartfix-lightest">{req.device}</div>
-                                            <p className="text-sm text-smartfix-light truncate">{req.issueDescription}</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <StatusBadge status={req.status} />
-                                        </div>
-                                        <div className="text-right col-span-2 md:col-span-1">
-                                            <button onClick={() => openDetailsModal(req)} className="bg-smartfix-medium text-smartfix-lightest py-2 px-4 rounded-lg hover:bg-smartfix-light hover:text-smartfix-darkest transition-colors text-sm font-semibold">
-                                                Подробнее
-                                            </button>
+                            {requests.length > 0 ? (
+                                requests.map(req => (
+                                    <div key={req.id} className="p-4 hover:bg-smartfix-dark transition-colors duration-200">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
+                                            <div>
+                                                <div className="font-bold text-lg text-smartfix-lightest">Заявка #{req.id}</div>
+                                                <div className="text-sm text-smartfix-light">
+                                                    {new Date(req.createdAt).toLocaleDateString('ru-RU')}
+                                                </div>
+                                            </div>
+                                            <div className="col-span-2 md:col-span-1">
+                                                <div className="font-semibold text-smartfix-lightest">{req.device}</div>
+                                                <p className="text-sm text-smartfix-light truncate">{req.issueDescription}</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <StatusBadge status={req.status} />
+                                            </div>
+                                            <div className="text-right col-span-2 md:col-span-1">
+                                                <button
+                                                    onClick={() => openDetailsModal(req)}
+                                                    className="bg-smartfix-medium text-smartfix-lightest py-2 px-4 rounded-lg hover:bg-smartfix-light hover:text-smartfix-darkest transition-colors text-sm font-semibold"
+                                                >
+                                                    Подробнее
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )) : (
+                                ))
+                            ) : (
                                 <p className="p-6 text-center text-smartfix-light">Заявок не найдено.</p>
                             )}
                         </div>
                     </div>
                 )}
             </>
-        )
-    }
+        );
+    };
 
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-4xl font-bold text-smartfix-lightest">{isClient ? 'Личный кабинет' : 'Заявки на ремонт'}</h2>
+                <h2 className="text-4xl font-bold text-smartfix-lightest">
+                    {isClient ? 'Личный кабинет' : 'Заявки на ремонт'}
+                </h2>
             </div>
 
             {isClient && (
                 <div className="flex border-b border-smartfix-dark mb-6">
-                    <button onClick={() => setActiveClientTab('list')} className={`px-6 py-3 text-lg font-semibold transition-colors ${activeClientTab === 'list' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}>
+                    <button
+                        onClick={() => setActiveClientTab('list')}
+                        className={`px-6 py-3 text-lg font-semibold transition-colors ${activeClientTab === 'list'
+                            ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md'
+                            : 'text-smartfix-light hover:text-smartfix-lightest'
+                            }`}
+                    >
                         Список заявок
                     </button>
-                    <button onClick={() => setActiveClientTab('new')} className={`px-6 py-3 text-lg font-semibold transition-colors ${activeClientTab === 'new' ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md' : 'text-smartfix-light'}`}>
+                    <button
+                        onClick={() => setActiveClientTab('new')}
+                        className={`px-6 py-3 text-lg font-semibold transition-colors ${activeClientTab === 'new'
+                            ? 'text-smartfix-lightest bg-smartfix-dark rounded-t-md'
+                            : 'text-smartfix-light hover:text-smartfix-lightest'
+                            }`}
+                    >
                         Новая заявка
                     </button>
                 </div>
             )}
 
             {renderContent()}
-
             {renderDetailsModal()}
         </div>
     );

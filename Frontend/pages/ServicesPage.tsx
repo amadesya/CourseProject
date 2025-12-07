@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Service, Role } from '../types';
+import { Service, ServiceDto, Role } from '../types';
 import { AuthContext } from '../AuthContext';
 import Modal from '../components/Modal';
 import { PlusIcon, TrashIcon } from '../components/icons';
-import { getServices} from '../services/api';
+import { getServices, createService, deleteService } from '../services/api';
 
 const ServicesPage: React.FC = () => {
     const { user } = useContext(AuthContext);
@@ -16,9 +16,7 @@ const ServicesPage: React.FC = () => {
 
     const fetchServices = async () => {
         setIsLoading(true);
-
         try {
-            // Получаем список услуг с бэкенда
             const data = await getServices();
             setServices(data);
         } catch (error) {
@@ -39,20 +37,15 @@ const ServicesPage: React.FC = () => {
             return;
         }
 
-        const newService = {
+        const newService: ServiceDto = {
             name: newServiceName,
             description: newServiceDesc,
             price: parseFloat(newServicePrice),
         };
 
         try {
-            // Вызываем API для создания услуги
-            // await createService(newService);
-
-            // Обновляем список услуг после добавления
+            await createService(newService);
             await fetchServices();
-
-            // Закрываем модалку и сбрасываем поля
             setIsModalOpen(false);
             setNewServiceName('');
             setNewServiceDesc('');
@@ -67,10 +60,7 @@ const ServicesPage: React.FC = () => {
         if (!window.confirm('Вы уверены, что хотите удалить эту услугу?')) return;
 
         try {
-            // Вызываем API для удаления услуги
-            // await deleteService(id);
-
-            // Обновляем список услуг после удаления
+            await deleteService(id);
             await fetchServices();
         } catch (error) {
             console.error("Failed to delete service:", error);
@@ -108,7 +98,6 @@ const ServicesPage: React.FC = () => {
                                     <p className="text-xl font-semibold text-smartfix-lightest mr-4">
                                         {service.price.toLocaleString('ru-RU')} ₽
                                     </p>
-
                                     {user?.role === Role.Admin && (
                                         <button
                                             onClick={() => handleDeleteService(service.id)}
@@ -150,4 +139,3 @@ const ServicesPage: React.FC = () => {
 };
 
 export default ServicesPage;
-

@@ -1,4 +1,4 @@
-import { RepairRequest, AuthResponseDto, LoginDto, RegisterDto } from "../types";
+import { RepairRequest, AuthResponseDto, LoginDto, RegisterDto, ServiceDto } from "../types";
 
 const API_URL = "http://localhost:5000/api";
 
@@ -177,17 +177,113 @@ export async function updateRepairRequest(
   return res.json();
 }
 
-// ======================= Comments =======================
+const REPAIR_REQUESTS_URL = `${API_URL}/RepairRequests`;
 
-// Получить комментарии по заявке
-export async function getComments(requestId: number) {
-  const res = await fetch(`${API_URL}/Comments/${requestId}`, {
+export async function deleteRepairRequest(id: number): Promise<{ message: string; id: number }> {
+  const res = await fetch(`${REPAIR_REQUESTS_URL}/${id}`, {
+    method: "DELETE",
     headers: { ...getAuthHeader() },
   });
-  if (!res.ok) throw new Error("Не удалось получить комментарии");
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Не удалось удалить заявку");
+  }
+
   return res.json();
 }
 
+
+// ======================= Comments =======================
+
+// Получить комментарии по заявке
+// Для отправки на сервер
+export interface CreateCommentDto {
+  repairRequestId: number;
+  userId: number;
+  text: string;
+}
+
+// Для получения с сервера
+export interface CommentDto {
+  id: number;
+  repairRequestId: number;
+  userId: number;
+  text: string;
+  date: string;
+}
+
+export async function createComment(commentDto: CreateCommentDto): Promise<CommentDto> {
+  console.log('Creating comment with data:', commentDto);
+  console.log('Full URL:', `${API_URL}/comments`); // Должно быть: http://localhost:5000/api/comments
+  
+  const res = await fetch(`${API_URL}/comments`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      ...getAuthHeader() 
+    },
+    body: JSON.stringify(commentDto),
+  });
+
+  console.log('Response status:', res.status);
+  console.log('Response headers:', res.headers);
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Create comment error response:', errorText);
+    throw new Error(`Не удалось создать комментарий: ${res.status} ${errorText}`);
+  }
+
+  const responseData = await res.json();
+  console.log('Created comment response:', responseData);
+  return responseData;
+}
+
+export async function getComments(requestId: number): Promise<CommentDto[]> {
+  const res = await fetch(`${API_URL}/comments/${requestId}`, {
+    headers: { ...getAuthHeader() },
+  });
+
+  if (!res.ok) {
+    console.error('Failed to fetch comments:', res.status, res.statusText);
+    throw new Error("Не удалось получить комментарии");
+  }
+
+  return res.json();
+}
+
+export async function updateComment(id: number, comment: CommentDto): Promise<Comment> {
+  const res = await fetch(`${API_URL}/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(comment),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Не удалось обновить комментарий");
+  }
+
+  return res.json();
+}
+
+  export async function deleteComment(id: number): Promise<{ message: string; commentId: number }> {
+    const res = await fetch(`${API_URL}/${id}`, {
+      method: "DELETE",
+      headers: { ...getAuthHeader() },
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Не удалось удалить комментарий");
+    }
+
+    return res.json();
+  }
 // ======================= Services =======================
 
 // Получить все услуги
@@ -198,6 +294,70 @@ export async function getServices() {
   if (!res.ok) throw new Error("Не удалось получить услуги");
   return res.json();
 }
+export async function getServiceById(id: number) {
+  const res = await fetch(`${API_URL}/Services/${id}`, {
+    headers: { ...getAuthHeader() },
+  });
+
+  if (!res.ok) {
+    throw new Error("Не удалось получить услугу");
+  }
+
+  return res.json();
+}
+
+export async function createService(service: { name: string; description?: string; price: number }) {
+  const res = await fetch(`${API_URL}/Services`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(service),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Не удалось создать услугу");
+  }
+
+  return res.json();
+}
+
+export async function updateService(id: number, service: { name: string; description?: string; price: number }) {
+  const res = await fetch(`${API_URL}/Services/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(service),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Не удалось обновить услугу");
+  }
+
+  return res.json();
+}
+
+export async function deleteService(id: number) {
+  const res = await fetch(`${API_URL}/Services/${id}`, {
+    method: "DELETE",
+    headers: { ...getAuthHeader() },
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Не удалось удалить услугу");
+  }
+
+  return res.json();
+}
+
+
+
 
 export async function getTechnicianRequests(
   technicianId: number,
@@ -303,3 +463,4 @@ export async function getUserById(id: number) {
   
   return res.json();
 }
+
