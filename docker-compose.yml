@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: smartfix-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: smartfix
+      MYSQL_USER: smartfix
+      MYSQL_PASSWORD: smartfix
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./script.sql:/docker-entrypoint-initdb.d/script.sql
+
+  backend:
+    build: ./Backend
+    container_name: smartfix-backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=db;Database=smartfix;User=smartfix;Password=smartfix;"
+    ports:
+      - "5000:80"
+
+  frontend:
+    build: ./Frontend
+    container_name: smartfix-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:

@@ -1,22 +1,20 @@
-# Используем официальный .NET SDK для сборки
+# ---- Build stage ----
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Копируем csproj и восстанавливаем зависимости
-COPY *.csproj ./
+COPY SmartFixApi.csproj .
 RUN dotnet restore
 
-# Копируем остальной проект и собираем
-COPY . ./
-RUN dotnet publish -c Release -o /app/publish
+COPY . .
+RUN dotnet publish -c Release -o /app
 
-# Используем официальный ASP.NET runtime для запуска
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# ---- Runtime stage ----
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/publish .
 
-# Открываем порт
-EXPOSE 5000
+COPY --from=build /app .
 
-# Запуск приложения
+ENV ASPNETCORE_URLS=http://+:80
+EXPOSE 80
+
 ENTRYPOINT ["dotnet", "SmartFixApi.dll"]

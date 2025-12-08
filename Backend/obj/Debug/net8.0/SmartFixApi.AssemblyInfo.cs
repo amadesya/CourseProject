@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SmartFixApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+713f0d7f90204807d74c38c1f176415ff340c24c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+53aef7bcbd522d00bcd205f53f62be91bac74f15")]
 [assembly: System.Reflection.AssemblyProductAttribute("SmartFixApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SmartFixApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
