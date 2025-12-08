@@ -39,12 +39,12 @@ INSERT INTO `__efmigrationshistory` VALUES
 
 
 -- ------------------------------
--- TABLE: users
+-- TABLE: Users
 -- ------------------------------
 
-DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `Users`;
 
-CREATE TABLE `users` (
+CREATE TABLE `Users` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `Name` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `Email` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE `users` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `users` VALUES
+INSERT INTO `Users` VALUES
 (2,'Иван Петров','ivan@smartfix.com','$2a$11$5wN9eFFwc3A8oHUTAgoBPid8QWIFagDycJAvItLMmQZ',1,1,'+7 (921) 555-44-33',NULL),
 (3,'Сергей Сидоров','sergey@smartfix.com','$2a$11$5wN9eFFwc3A8oHUTAgoBPid8QWIFagDycJAvItLMmQZ',1,1,NULL,NULL),
 (4,'Анна Кузнецова','anna@client.com','$2a$11$5wN9eFFwc3A8oHUTAgoBPid8QWIFagDycJAvItLMmQZ',0,1,'+7 (911) 123-45-67',NULL),
@@ -69,12 +69,12 @@ INSERT INTO `users` VALUES
 
 
 -- ------------------------------
--- TABLE: repairrequests
+-- TABLE: RepairRequests
 -- ------------------------------
 
-DROP TABLE IF EXISTS `repairrequests`;
+DROP TABLE IF EXISTS `RepairRequests`;
 
-CREATE TABLE `repairrequests` (
+CREATE TABLE `RepairRequests` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `ClientId` int NOT NULL,
   `TechnicianId` int DEFAULT NULL,
@@ -87,14 +87,14 @@ CREATE TABLE `repairrequests` (
   KEY `idx_technician` (`TechnicianId`),
   KEY `idx_client` (`ClientId`),
   KEY `idx_created` (`CreatedAt` DESC),
-  CONSTRAINT `repairrequests_ibfk_1` FOREIGN KEY (`ClientId`) REFERENCES `users` (`Id`) ON DELETE CASCADE,
-  CONSTRAINT `repairrequests_ibfk_2` FOREIGN KEY (`TechnicianId`) REFERENCES `users` (`Id`) ON DELETE SET NULL
+  CONSTRAINT `RepairRequests_ibfk_1` FOREIGN KEY (`ClientId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `RepairRequests_ibfk_2` FOREIGN KEY (`TechnicianId`) REFERENCES `Users` (`Id`) ON DELETE SET NULL
 ) ENGINE=InnoDB
   AUTO_INCREMENT=11
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `repairrequests` VALUES
+INSERT INTO `RepairRequests` VALUES
 (1,4,7,'Samsung A52','Заменить аккумулятор','InProgress','2025-10-25'),
 (2,5,2,'MacBook Pro 16"','Ноутбук сильно греется и шумит даже при небольшой нагрузке.','Ready','2025-10-24'),
 (3,4,2,'Apple Watch Series 7','Часы перестали включаться после падения.','InProgress','2025-10-26'),
@@ -103,12 +103,12 @@ INSERT INTO `repairrequests` VALUES
 
 
 -- ------------------------------
--- TABLE: comments
+-- TABLE: Comments
 -- ------------------------------
 
-DROP TABLE IF EXISTS `comments`;
+DROP TABLE IF EXISTS `Comments`;
 
-CREATE TABLE `comments` (
+CREATE TABLE `Comments` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `RepairRequestId` int NOT NULL,
   `UserId` int NOT NULL,
@@ -117,14 +117,14 @@ CREATE TABLE `comments` (
   PRIMARY KEY (`Id`),
   KEY `idx_request` (`RepairRequestId`),
   KEY `idx_user` (`UserId`),
-  CONSTRAINT `comments_ibfk_1` FOREIGN KEY (`RepairRequestId`) REFERENCES `repairrequests` (`Id`) ON DELETE CASCADE,
-  CONSTRAINT `comments_ibfk_2` FOREIGN KEY (`UserId`) REFERENCES `users` (`Id`) ON DELETE CASCADE
+  CONSTRAINT `Comments_ibfk_1` FOREIGN KEY (`RepairRequestId`) REFERENCES `RepairRequests` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `Comments_ibfk_2` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
 ) ENGINE=InnoDB
   AUTO_INCREMENT=6
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `comments` VALUES
+INSERT INTO `Comments` VALUES
 (1,1,4,'Сдала телефон утром.','2025-10-25 10:00:00'),
 (2,1,2,'Принял в работу. Требуется замена дисплейного модуля. Запчасть заказана.','2025-10-25 11:30:00'),
 (3,2,3,'Диагностика завершена. Произведена чистка и замена термопасты. Ноутбук готов к выдаче.','2025-10-26 15:00:00'),
@@ -133,12 +133,12 @@ INSERT INTO `comments` VALUES
 
 
 -- ------------------------------
--- TABLE: services
+-- TABLE: Services
 -- ------------------------------
 
-DROP TABLE IF EXISTS `services`;
+DROP TABLE IF EXISTS `Services`;
 
-CREATE TABLE `services` (
+CREATE TABLE `Services` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `Name` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `Description` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
@@ -149,7 +149,7 @@ CREATE TABLE `services` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `services` VALUES
+INSERT INTO `Services` VALUES
 (1,'Диагностика устройства','Полная проверка всех компонентов устройства на наличие неисправностей.',1000.000000000000000000000000000000),
 (2,'Замена экрана','Установка нового дисплейного модуля.',5000.000000000000000000000000000000),
 (3,'Замена аккумулятора','Установка новой батареи.',2500.000000000000000000000000000000),
@@ -157,4 +157,3 @@ INSERT INTO `services` VALUES
 (5,'Обновление ПО','Установка последней версии операционной системы и программ.',1200.000000000000000000000000000000);
 
 SET FOREIGN_KEY_CHECKS = 1;
-
