@@ -8,8 +8,6 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: smartfix
-      MYSQL_USER: smartfix
-      MYSQL_PASSWORD: smartfix
     ports:
       - "3306:3306"
     volumes:
@@ -24,7 +22,7 @@ services:
       - db
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: "Server=db;Database=smartfix;User=smartfix;Password=smartfix;"
+      ConnectionStrings__DefaultConnection: "Server=smartfix-db;Port=3306;Database=smartfix;User=root;Password=root;"
     ports:
       - "5000:80"
 
@@ -32,10 +30,10 @@ services:
     build: ./Frontend
     container_name: smartfix-frontend
     restart: always
-    ports:
-      - "80:80"
     depends_on:
       - backend
+    ports:
+      - "8080:80"
 
 volumes:
   db_data:
